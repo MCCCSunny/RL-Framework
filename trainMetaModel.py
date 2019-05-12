@@ -35,7 +35,6 @@ def trainMetaModel(settingsFileName, samples=10, settings=None, numThreads=1, hy
     if (settings is None):
         file = open(settingsFileName)
         settings = json.load(file)
-        # print ("Settings: " + str(json.dumps(settings)))
         file.close()
     
     print ( "Running ", samples, " simulation(s) over ", numThreads, " Thread(s)")
@@ -75,34 +74,26 @@ def trainMetaModel(settingsFileName, samples=10, settings=None, numThreads=1, hy
         
         ## Create data directory and copy any desired files to these folders .
         if ( not (hyperSettings is None) ):
-            # file = open(hyperSettings)
             hyper_settings = hyperSettings
-            # print ("Settings: " + str(json.dumps(settings)))
-            # file.close()
             directory= getDataDirectory(settings)
             if not os.path.exists(directory):
                 os.makedirs(directory)
             if ('saved_model_path' in hyperSettings):
-                print ("Copying fd model: ", hyperSettings['saved_model_path'])
-                # shutil.copy2(hyperSettings['saved_model_path'], directory+"forward_dynamics_"+"_Best_pretrain.pkl" )
+                print ("Copying fd model: ", hyperSettings['saved_model_path'])            
                 shutil.copy2(hyperSettings['saved_model_path'], directory+getAgentName()+"_Best.pkl" )
             if ( 'saved_model_folder' in hyperSettings):
                 ### Copy models from other metamodel simulation
                 ### Purposefully not copying the "Best" model but the last instead
                 shutil.copy2(hyperSettings['saved_model_folder']+"/_" + str(i)+'/'+settings['model_type']+'/'+getAgentName()+".pkl", directory+getAgentName()+"_Best.pkl" )
                 
-        
-    # p = ThreadPool(numThreads)
     p = ProcessingPool(numThreads)
     t0 = time.time()
-    # print ("hyperSettings: ", hyper_settings)
     if ( (hyperSettings is not None) and ('testing' in hyper_settings and (hyper_settings['testing']))):
         print("Not simulating, this is a testing run:")
     else:
         result = p.map(trainModelParallel, sim_data)
     t1 = time.time()
     print ("Meta model training complete in " + str(datetime.timedelta(seconds=(t1-t0))) + " seconds")
-    # print (result)
 
     result_data['sim_time'] = "Meta model training complete in " + str(datetime.timedelta(seconds=(t1-t0))) + " seconds"
     result_data['raw_sim_time_in_seconds'] = t1-t0
@@ -110,8 +101,6 @@ def trainMetaModel(settingsFileName, samples=10, settings=None, numThreads=1, hy
     result_data['Number_of_threads_used'] = numThreads
     
     return result_data
-    # trainModelParallel(settingsFileName, copy.deepcopy(settings))
-        
     
     
 def trainMetaModel_(args):
@@ -166,7 +155,6 @@ def trainMetaModel_(args):
         print ("Saving settings file with data to: ", out_file_name)
         out_file = open(out_file_name, 'w')
         out_file.write(json.dumps(simSettings_, indent=4))
-        # file.close()
         out_file.close()
         
         ### Create a tar file of all the sim data
@@ -178,11 +166,7 @@ def trainMetaModel_(args):
             
         polt_settings_files = []
         polt_settings_files.append(out_file_name)
-        # for hyperSetFile in result['hyper_param_settings_files']:
-        #     print("adding ", hyperSetFile, " to tar file")
-        #     addDataToTarBall(dataTar, simsettings_tmp, fileName=hyperSetFile)
-        #     polt_settings_files.append(hyperSetFile)
-            
+        
         figure_file_name = root_data_dir + simSettings_['data_folder'] + "/_" + hyperSettings_['param_to_tune'] + '_'
         
         print("root_data_dir: ", root_data_dir)
