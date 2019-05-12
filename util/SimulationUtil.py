@@ -14,27 +14,12 @@ import numpy as np
 from pydoc import locate
 
 from util.ExperienceMemory import ExperienceMemory
-# from ModelEvaluation import *
-# from RLVisualize import RLVisualize
-# from NNVisualize import NNVisualize
-
-
 
 import random
-# import cPickle
 import dill
 import dill as pickle
 import dill as cPickle
-
-# import cProfile, pstats, io
-# import memory_profiler
-# import psutil
 import gc
-# from guppy import hpy; h=hpy()
-# from memprof import memprof
-
-# import pathos.multiprocessing
-# import multiprocessing
 
 from model.ModelUtil import scale_action
 

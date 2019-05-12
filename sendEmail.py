@@ -32,10 +32,7 @@ def sendEmail(subject, contents, hyperSettings, simSettings=None, testing=False,
     
     fromEmail = hyperSettings['from_email_address']
     print("From email: ", fromEmail)
-    # me == the sender's email address
-    # you == the recipient's email address
     msg['Subject'] = subject
-    # msg['From'] = 'csguestn@dyn.cs.sfu.ca'
     msg['From'] = fromEmail
     msg['To'] = 'gberseth@cs.ubc.ca'
     

@@ -47,7 +47,6 @@ def trainMetaModel(settingsFileName, samples=10, settings=None, numThreads=1, hy
     print ("Saving settings file with data to: ", out_file_name)
     out_file = open(out_file_name, 'w')
     out_file.write(json.dumps(settings_original, indent=4))
-    # file.close()
     out_file.close()
         
     sim_settings=[]
@@ -196,8 +195,6 @@ def trainMetaModel_(args):
     
 
 if (__name__ == "__main__"):
-        
-
     trainMetaModel_(sys.argv)
     
     
