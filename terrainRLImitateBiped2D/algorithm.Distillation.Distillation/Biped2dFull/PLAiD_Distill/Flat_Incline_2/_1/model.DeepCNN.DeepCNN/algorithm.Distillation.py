@@ -279,7 +279,7 @@ class Distillation(AlgorithmInterface):
         if ( pre_loss < 10.0): ## To protect the critic from odd losses
             loss, _ = self._train()
         
-        return loss # loss=(reward-criticvalue)**2
+        return loss
     
     def trainActor(self, states, actions, rewards, result_states, falls, advantage, exp_actions=None, forwardDynamicsModel=None):
         lossActor = 0
@@ -370,7 +370,7 @@ class Distillation(AlgorithmInterface):
     
     def predict(self, state, deterministic_=True, evaluation_=False, p=None, sim_index=None, 
                 bootstrapping=False):
-        if (not (p is None) and (evaluation_ is False)):
+        if (not ( p is None) and (evaluation_ is False)):
             r = np.random.rand(1)[0] ## in [0,1]
             if ('run_distillation_in_test_mode' in self.getSettings() and (self.getSettings()['run_distillation_in_test_mode'])):
                 pass
@@ -380,7 +380,8 @@ class Distillation(AlgorithmInterface):
                 evaluation_ = True
         ### Want to start out selecting actions from the expert more
         ### p starts at 1 is anneal to 0.
-        if ((evaluation_ is True) or (bootstrapping is True)): ## Use policy
+        if ( (evaluation_ is True) or (bootstrapping is True)
+            ): ## Use policy
             # print("Using Policy")
             action_ = super(Distillation,self).predict(state)
         else: ## Use expert policy  

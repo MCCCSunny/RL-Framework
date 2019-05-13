@@ -1,10 +1,4 @@
-# import matplotlib
-# matplotlib.use('Agg')
-
-# import matplotlib.pyplot as plt
-# from matplotlib import mpl
 import numpy as np
-# import matplotlib.animation as animation
 import random
 import sys
 import json
@@ -85,25 +79,11 @@ def plotMetaDataSimulation(data_path, settings, settingsFiles, folder=''):
                 min_length = len(otherDatas[j][i]['data']["mean_eval"])
             if tmp_min_length > (len(otherDatas[j][i]['data']["mean_eval"])):
                 tmp_min_length = len(otherDatas[j][i]['data']["mean_eval"])
-            # print ("otherDatas[j][i]['data']: ", otherDatas[j][i]['data'])
-            # print "Training data: " + str(trainingData)
             file.close()
         print ("Min length for ", otherDatas[j][0]['fileName'], " is ", tmp_min_length)
         
-    
-    """
-    trainData["mean_reward"]=[]
-    trainData["std_reward"]=[]
-    trainData["mean_bellman_error"]=[]
-    trainData["std_bellman_error"]=[]
-    trainData["mean_discount_error"]=[]
-    trainData["std_discount_error"]=[]
-    
-    """
     rlv.setLength(min_length)
     rlv.updateRewards(trainingDatas, otherDatas)
     rlv.init()
     rlv.saveVisual(folder+"MBAE_Training_curves")
-    # rlv.show()
-    
     return rlv

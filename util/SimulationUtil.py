@@ -246,8 +246,8 @@ def createRLAgent(algorihtm_type, state_bounds, discrete_actions, reward_bounds,
     networkModel = createNetworkModel(settings["model_type"], state_bounds, action_bounds, reward_bounds, settings)
     num_actions= discrete_actions.shape[0] # number of rows
     if settings['action_space_continuous']:
-            action_bounds = np.array(settings["action_bounds"], dtype=float)
-            num_actions = action_bounds.shape[1]
+        action_bounds = np.array(settings["action_bounds"], dtype=float)
+        num_actions = action_bounds.shape[1]
             
     if (settings['load_saved_model'] == True):
         directory= getDataDirectory(settings)

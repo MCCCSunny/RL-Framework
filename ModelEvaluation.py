@@ -1,24 +1,14 @@
-
-
-# import cPickle
 import dill
 import sys
 import gc
-# from theano.compile.io import Out
 sys.setrecursionlimit(50000)
-# from sim.PendulumEnvState import PendulumEnvState
-# from sim.PendulumEnv import PendulumEnv
 from multiprocessing import Process, Queue
-# from pathos.multiprocessing import Pool
 import threading
 import time
 import copy
 import numpy as np
 from model.ModelUtil import *
-# import memory_profiler
-# import resources
 
-# class SimWorker(threading.Thread):
 class SimWorker(Process):
     
     def __init__(self, input_queue, output_queue, actor, exp, model, discount_factor, action_space_continuous, 
@@ -38,8 +28,7 @@ class SimWorker(Process):
         self._p= p
         self._validation=validation
         self._max_iterations = settings['rounds'] + settings['epochs'] * 32
-        self._iteration = 0
-        # self._namespace = namespace # A way to pass messages between processes
+        self._iteration = 0    
         self._process_random_seed = process_random_seed
         ## Used to receive special messages like update your model parameters to this now!
         self._message_queue = message_que
@@ -447,14 +436,7 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                         else:
                             print ("Exploration method unknown: " + str(settings['exploration_method']))
                             sys.exit(1)
-                        # randomAction = randomUniformExporation(action_bounds) # Completely random action
-                        # randomAction = random.choice(action_selection)
                         if (settings["use_model_based_action_optimization"] and settings["train_forward_dynamics"] ):
-                            """
-                            if ( ('anneal_mbae' in settings) and settings['anneal_mbae'] ):
-                                mbae_omega = p * settings["model_based_action_omega"]
-                            else:
-                            """
                             mbae_omega = settings["model_based_action_omega"]
                             if (np.random.rand(1)[0] < mbae_omega):
                                 ## Need to be learning a forward dynamics deep network for this
@@ -467,17 +449,12 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                                 else: 
                                     use_rand_act = False
                                 (action, value_diff) = getOptimalAction(model.getForwardDynamics(), model.getPolicy(), state_, action_lr=mbae_lr, use_random_action=use_rand_act)
-                                # if ( ('print_level' in settings) and (settings["print_level"]== 'debug') ):
-                                    # print("MBAE action:")
-                        # print ("Exploration: Before action: ", pa, " after action: ", action, " epsilon: ", epsilon * p )
+
                 else: ## exploit policy
                     exp_action = int(0) 
-                    # return pa1
                     ## For sampling method to skip sampling during evaluation.
-                    pa = model.predict(state_, evaluation_=evaluation, p=p, sim_index=worker_id, bootstrapping=bootstrapping)
-                    
-                    action = pa
-                    # print ("Exploitation: ", action , " epsilon: ", epsilon * p)
+                    pa = model.predict(state_, evaluation_=evaluation, p=p, sim_index=worker_id, bootstrapping=bootstrapping)                    
+                    action = pa                   
                 outside_bounds=False
                 action_=None
                 if (settings["clamp_actions_to_stay_inside_bounds"] or (settings['penalize_actions_outside_bounds'])):
@@ -486,7 +463,6 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                         action = action_
                 if (settings["visualize_forward_dynamics"]):
                     predicted_next_state = model.getForwardDynamics().predict(np.array(state_), [action])
-                    # exp.visualizeNextState(state_[0], [0,0]) # visualize current state
                     exp.visualizeNextState(predicted_next_state, action)
                     
                     action__ = model.predict(state_)
@@ -503,33 +479,20 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                         else:
                             mbae_lr = settings["action_learning_rate"]
                         action_new_ = getOptimalAction2(model.getForwardDynamics(), model.getPolicy(), action_, state_, mbae_lr)
-                        # actions.append(action_new_)
                         actions_.append(action_)
                         print("action_new_: ", action_new_[0], " action_: ", action_[0])
                         if ( (float(action_new_[0][0]) - float(action_[0])) > 0 ):
                             dirs.append(1.0)
                         else:
                             dirs.append(-1.0)
-                        
-                    # return _getOptimalAction(forwardDynamicsModel, model, action, state)
-                    
-                    # action_ = _getOptimalAction(model.getForwardDynamics(), model.getPolicy(), action, state_)
+
                     exp.getEnvironment().visualizeActions(actions_, dirs)
                     ## The perfect action?
                     exp.getEnvironment().visualizeAction(action__)
                     
                 
                 if (not settings["train_actor"]): # hack to use debug critic only
-                    """
-                        action = np.random.choice(action_selection)
-                        action__ = actor.getActionParams(action)
-                        action = action__
-                        
-                        pa = model.predict(state_)
-                        action = pa
-                    """
                     pass
-                    # action=[0.2]
                 reward_ = actor.actContinuous(exp,action)
                 """
                 if ( settings['train_reward_predictor'] and (not bootstrapping)):
@@ -539,7 +502,6 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                 agent_not_fell = actor.hasNotFallen(exp)
                 if (outside_bounds and settings['penalize_actions_outside_bounds']):
                     reward_ = reward_ + settings['reward_lower_bound'] # TODO: this penalty should really be a function of the distance the action was outside the bounds 
-                # print ("Action: ", action, " reward: ", reward_, " p: ", p)
             elif not action_space_continuous:
                 """
                 action = random.choice(action_selection)
@@ -548,53 +510,24 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                 """
                 pa = model.predict(state_)
                 action = random.choice(action_selection)
-                action = eGreedy(pa, action, epsilon * p)
-                # print("Action selection:", action_selection, " action: ", action)
+                action = eGreedy(pa, action, epsilon * p)               
                 action__ = actor.getActionParams(action)
                 action = [action]
-                # print ("Action selected: " + str(action__))
-                # reward = act(action)
-                # print ("performing action: ", action)
                 reward_ = actor.actContinuous(exp, action__, bootstrapping=True)
                 agent_not_fell = actor.hasNotFallen(exp)
-                # print ("performed action: ", reward)
-            
-            # print ("Agent fell ", agent_not_fell, " with reward: ", reward_, " from action: ", action)
-                # reward_=0
-            # print("Action3: ", action)
-            # if ((reward_ >= settings['reward_lower_bound'] )):
-            
-            # discounted_sum = discounted_sum + (((math.pow(discount_factor,state_num) * reward_))) # *(1.0-discount_factor))
-            # discounted_sum = discounted_sum + (((math.pow(discount_factor,state_num) * (reward_ * (1.0-discount_factor) )))) # *(1.0-discount_factor))
+
             discounted_sum = discounted_sum + (((math.pow(discount_factor,state_num) * (reward_ )))) # *(1.0-discount_factor))
-            baseline.append(model.q_value(state_)[0])
-            # G_t.append((math.pow(discount_factor,0) * (reward_ * (1.0-discount_factor) ))) # *(1.0-discount_factor)))
+            baseline.append(model.q_value(state_)[0])            
             G_t_rewards.append(reward_)
             G_t.append(0) # *(1.0-discount_factor)))
             for i in range(len(G_t)):
                 G_t[i] = G_t[i] + (((math.pow(discount_factor,(len(G_t)-i)-1) * (reward_ ))))
-            # print ("discounted sum: ", discounted_sum, " G_t: ", G_t[0])
-            # print ("state_num: ", state_num, " len(G_t)-1: ", len(G_t)-1)
-            
-            # print ("discounted_sum: ", discounted_sum)
             resultState_ = exp.getState()
-            
-            # if ( ('print_level' in settings) and (settings["print_level"]== 'debug') ):
-                # print("Advantage of action: ", (reward_ + (discount_factor * model.q_value(resultState_)[0])) - model.q_value(state_)[0])
-            
-            # print ( "Sim state info:", state_)
-            # print ( "Sim result state info:", resultState_)
-            # print ("Result State shape: ", (np.array(resultState).shape))
-            # _val_act = exp.getActor().getModel().maxExpectedActionForState(resultState)
-            # bellman_error.append(val_act[0] - (reward + _val_act[0]))
+
             ## For testing remove later
             if (settings["use_back_on_track_forcing"] and (not evaluation)):
                 exp.getControllerBackOnTrack()
-                
-            # print ("Value: ", model.q_value(state_), " Action " + str(action) + " Reward: " + str(reward_) )
             if print_data:
-                # print ("State " + str(state_) + " action " + str(pa) + " newState " + str(resultState) + " Reward: " + str(reward_))
-                # print ("Value: ", model.q_value(state_), " Action " + str(pa) + " Reward: " + str(reward_) + " Discounted Sum: " + str(discounted_sum) )
                 value__ = 0
                 if ( not bootstrapping ):
                     value__ = model.q_value(state_)
@@ -603,10 +536,6 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                     predicted_reward = model.getForwardDynamics().predict_reward(state_, [action])
                     print ("Predicted reward: ", predicted_reward) 
                 print ("Agent has fallen: ", not agent_not_fell )
-                # print ("Python Reward: " + str(reward(state_, resultState)))
-                
-            # if ( (reward_ >= settings['reward_lower_bound'] ) or evaluation):
-                # print("Shape of states: ", np.array(states).shape, " state shape, ", np.array(state_).shape)
         else:
             bad_sim_state = True
             
@@ -618,60 +547,24 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
             states.extend(state_)
             actions.append(action)
             rewards.append(reward_)
-            # print("Shape of result states: ", np.array(result_states___).shape, " result_state shape, ", np.array(resultState_).shape)
-            # print("result states: ", result_states___)
             result_states___.extend(resultState_)
-            if (worker_id is not None):
-                # print("Pushing working id as fall value: ", [worker_id])
+            if (worker_id is not None):               
                 falls.append([worker_id])
             else:
-                # print("Pushing actual fall value: ", [agent_not_fell])
                 falls.append([agent_not_fell])
             exp_actions.append([exp_action])
-            # print ("falls: ", falls)
-            # values.append(value)
             if (not use_batched_exp):
-                if ((_output_queue != None) and (not evaluation) and (not bootstrapping)): # for multi-threading
-                    # _output_queue.put((norm_state(state_, model.getStateBounds()), [norm_action(action, model.getActionBounds())], [reward_], norm_state(state_, model.getStateBounds()))) # TODO: Should these be scaled?
-                    # print("Putting tuple in queue")
+                if ((_output_queue != None) and (not evaluation) and (not bootstrapping)): # for multi-threading                
                     _output_queue.put((states[-1:], actions[-1:], result_states___[-1:], [rewards[-1:]],  falls[-1:], [0], exp_actions[-1:]))
             
             state_num += 1
-        # else:
-            # print ("****Reward was to bad: ", reward_)
         pa = None
         
-        if ((exp.endOfEpoch() and settings['reset_on_fall'] or (bad_sim_state))  
-            # or ((reward_ < settings['reward_lower_bound']) and (not evaluation))
-                ):
+        if ((exp.endOfEpoch() and settings['reset_on_fall'] or (bad_sim_state))):
             evalDatas.append(actor.getEvaluationData()/float(settings['max_epoch_length']))
-            """
-            if ((_output_queue != None) and (not evaluation) and (not bootstrapping)): # for multi-threading
-                # _output_queue.put((norm_state(state_, model.getStateBounds()), [norm_action(action, model.getActionBounds())], [reward_], norm_state(state_, model.getStateBounds()))) # TODO: Should these be scaled?
-                _output_queue.put((state_, action, [reward_], resultState, [agent_not_fell]))
-            """
             discounted_sums.append(discounted_sum)
             discounted_sum=0
             state_num=0
-            # bad_sim_state = False
-            
-            # print ("Baseline: ", baseline)
-            # print ("Discounted sums: ", G_ts)
-            """
-            discounted_reward = discounted_rewards(np.array(G_t_rewards), discount_factor)
-            # baseline = model.model.q_value(state_)
-            # print("discounted reward: ", discounted_reward)
-            baseline.append(0)
-            baseline = np.array(baseline)
-            # print (" G_t_rewards: ", G_t_rewards)
-            # print (" baseline: ", baseline)
-            deltas = (G_t_rewards + discount_factor*baseline[1:]) - baseline[:-1]
-            if ('use_GAE' in settings and ( settings['use_GAE'] )): 
-                advantage.extend(discounted_rewards(deltas, discount_factor * settings['GAE_lambda']))
-            else:
-                advantage.extend(compute_advantage(discounted_reward, np.array(G_t_rewards), discount_factor))
-            advantage.append(0.0)
-            """
             if ('use_GAE' in settings and ( settings['use_GAE'] )):
                 path = {}
                 path['states'] = copy.deepcopy(states[last_epoch_end:])
@@ -689,14 +582,12 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                 adv_r = [ [x, y] for x,y in zip(advantage, G_t_rewards)]
                 R_r = [ [x_r, y_r, z_r] for x_r,y_r,z_r in zip(path['reward'], G_t_rewards, G_t)]
                 A_r = [ [x_r, y_r, z_r] for x_r,y_r,z_r in zip(advantage, discounted_rewards(np.array(rewards[last_epoch_end:]), discount_factor), baseline)]
-                # print ("Adv: ", advantage)
                 print ("last_epoch_end: ", last_epoch_end, " i_ ", i_)
                 print("Advantage, R: ", adv_r)
                 print ("Lengths: ", len(rewards[last_epoch_end:]), len(G_t_rewards), len(G_t))
                 print ("Rewards: ", R_r)
                 print ("Advantage, discounted Reward, baseline: ", np.array(A_r))
                 
-            # print ("Advantage: ", advantage)
             G_ts.extend(copy.deepcopy(G_t))
             baselines_.extend(copy.deepcopy(baseline))
             if (use_batched_exp):
@@ -724,8 +615,6 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                 exp.generateEnvironmentSample()
                 
             exp.initEpoch()
-            # actor.init() ## This should be removed and only exp.getActor() should be used
-            # model.initEpoch()
             state_ = exp.getState()
             if (not bootstrapping):
                 q_values_.append(model.q_value(state_))
@@ -742,22 +631,13 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
     discounted_sums.append(discounted_sum)
     G_ts.extend(copy.deepcopy(G_t))
     baselines_.extend(copy.deepcopy(baseline))
-    # baselines_ = np.transpose(model.q_values(states ))[0]
-    # print ("Baseline: ", len(baselines_), baseline)
-    # print ("Baseline: ", len(baselines_), baselines_)
-    # print ("discounted_rewards(): ", discounted_rewards(np.array(rewards[last_epoch_end:]), discount_factor))
-    # print ("Discounted sums: ", len(G_ts), G_ts)
-    # print ("Value Error: ", np.array(baselines_) - np.array(G_ts))
-    # print("discounted_sums: ", discounted_sums)
-    # print("q_values_: ", q_values_)
     discounted_sum = G_ts
     q_value = baselines_
     
     if print_data:
         print ("Evaluation: ", str(evalData))
         print ("Eval Datas: ", evalDatas) 
-    # print ("Evaluation Data: ", evalData)
-        # print ("Current Tuple: " + str(experience.current()))
+
     if (use_batched_exp):
         if ((_output_queue != None) and (not evaluation) and (not bootstrapping)): # for multi-threading
             tmp_states = copy.deepcopy(states[last_epoch_end:])
@@ -771,19 +651,7 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
             for state__, action__, reward__, result_state__, fall__, G_t__, exp_actions__ in zip(tmp_states, tmp_actions, tmp_rewards, tmp_result_states, tmp_falls, tmp_G_ts, tmp_exp_actions):
                 _output_queue.put((state__, action__, result_state__, reward__, fall__, G_t__, exp_actions__))
     ## Compute Advantage
-    """
-    discounted_reward = discounted_rewards(np.array(G_t_rewards), discount_factor)
-    baseline.append(0)
-    baseline = np.array(baseline)
-    # print (" G_t_rewards: ", G_t_rewards)
-    # print (" baseline: ", baseline)
-    deltas = (G_t_rewards + discount_factor*baseline[1:]) - baseline[:-1]
-    if ('use_GAE' in settings and ( settings['use_GAE'] )): 
-        advantage.extend(discounted_rewards(deltas, discount_factor * settings['GAE_lambda']))
-    else:
-        advantage.extend(compute_advantage(discounted_reward, np.array(G_t_rewards), discount_factor))
-    advantage.append(0.0)
-    """
+ 
     if ('use_GAE' in settings and ( settings['use_GAE'] )):
         path = {}
         path['states'] = copy.deepcopy(states [last_epoch_end:])
@@ -796,33 +664,19 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
         if (len(rewards[last_epoch_end:]) > 0):
             advantage.extend(discounted_rewards(np.array(rewards[last_epoch_end:]), discount_factor))
         
-    # G_t_rewards.append(0)
+
     if ( ('print_level' in settings) and (settings["print_level"]== 'debug') ):
         adv_r = [ [x, y] for x,y in zip(advantage, G_t_rewards)]
         R_r = [ [x_r, y_r, z_r] for x_r,y_r,z_r in zip(path['reward'], G_t_rewards, G_t)]
         A_r = [ [x_r, y_r, z_r] for x_r,y_r,z_r in zip(advantage, discounted_rewards(np.array(rewards[last_epoch_end:]), discount_factor), baseline)]
-        # print ("Adv: ", advantage)
         print ("last_epoch_end: ", last_epoch_end, " i_ ", i_)
         print("Advantage, R: ", adv_r)
         print ("Lengths: ", len(rewards[last_epoch_end:]), len(G_t_rewards), len(G_t))
         print ("Rewards: ", R_r)
         print ("Advantage, discounted Reward, baseline: ", np.array(A_r))
-        # print("Advantage, rewards, baseline: ", np.concatenate((advantage, G_t_rewards, baseline), axis=1))
-    # print ("ad: ", advantage)
     advantage = np.reshape(np.array([advantage]), newshape=(-1,1))
     tuples = (states, actions, result_states___, rewards, falls, G_ts, advantage, exp_actions)
-    """
-    if (settings["print_levels"][settings["print_level"]] >= settings["print_levels"]['debug']):
-        print("End of episode")
-        actions_ = np.array(actions)
-        print("Actions:     ", np.mean(actions_, axis=0), " shape: ", actions_.shape)
-        print("Actions std:  ", np.std(actions_, axis=0) )
-        if ( len(stds) > 0):
-            print("Mean actions std:  ", np.mean(stds, axis=0) )
-    """
-    # print("***** Sim Actions std:  ", np.std((actions), axis=0) )
-    # print("***** Sim State mean:  ", np.mean((states), axis=0) )
-    # print("***** Sim Next State mean:  ", np.mean((result_states___), axis=0) )
+
     return (tuples, discounted_sum, q_value, evalData)
     
 
@@ -845,23 +699,15 @@ def evalModel(actor, exp, model, discount_factor, anchors=None, action_space_con
                 visualizeEvaluation=visualizeEvaluation, bootstrapping=bootstrapping, sampling=sampling, epsilon=settings['epsilon'])
         epoch_ = epoch_ + 1
         (states, actions, result_states, rewards, falls, G_t, advantage, exp_actions) = tuples
-        # print (states, actions, rewards, result_states, discounted_sum, value)
-        # print ("Evaluated Actions: ", actions)
-        # print ("Evaluated Rewards: ", rewards)
         if model.getExperience().samples() >= settings['batch_size']:
             _states, _actions, _result_states, _rewards, falls, _G_ts, exp_actions = model.getExperience().get_batch(settings['batch_size'])
             error = model.bellman_error(_states, _actions, _rewards, _result_states, falls)
         else :
             error = [[0]]
             print ("Error: not enough samples in experience to check bellman error: ", model.getExperience().samples(), " needed " , settings['batch_size'] )
-        # states, actions, result_states, rewards = experience.get_batch(64)
-        # error = model.bellman_error(states, actions, rewards, result_states)
-        # print (states, actions, rewards, result_states, discounted_sum, value)
         error = np.mean(np.fabs(error))
-        # print ("Round: " + str(round_) + " Epoch: " + str(epoch) + " With reward_sum: " + str(np.sum(rewards)) + " bellman error: " + str(error))
         discounted_values.append(discounted_sum)
         values.append(value)
-        # print ("Rewards over eval epoch: ", rewards)
         # This works better because epochs can terminate early, which is bad.
         reward_over_epocs.append(np.mean(np.array(rewards)))
         bellman_errors.append(error)
@@ -899,8 +745,7 @@ def evalModelParrallel(input_anchor_queue, eval_episode_data_queue, model, setti
     evalDatas = []
     epoch_=0
     i = 0 
-    while i < anchors: # half the anchors
-        
+    while i < anchors: # half the anchors       
         j = 0
         while (j < settings['num_available_threads']) and ( (i + j) < anchors):
             episodeData = {}
@@ -912,38 +757,21 @@ def evalModelParrallel(input_anchor_queue, eval_episode_data_queue, model, setti
                 input_anchor_queue.put(episodeData)
             j += 1
             
-        # for anchs in anchors: # half the anchors
         j = 0
         while (j < settings['num_available_threads']) and ( (i + j) < anchors):
             (tuples, discounted_sum, value, evalData) =  eval_episode_data_queue.get()
             j += 1
-            """
-            simEpoch(actor, exp, 
-                    model, discount_factor, anchors=anchs, action_space_continuous=action_space_continuous, 
-                    settings=settings, print_data=print_data, p=0.0, validation=True, epoch=epoch_, evaluation=evaluation,
-                    visualizeEvaluation=visualizeEvaluation)
-            """
             epoch_ = epoch_ + 1
             (states, actions, result_states, rewards, falls, G_ts, advantage, exp_actions) = tuples
-            # print (states, actions, rewards, result_states, discounted_sum, value)
-            # print ("Evaluated Actions: ", actions)
-            # print ("Evaluated Rewards: ", rewards)
             if model.getExperience().samples() >= settings['batch_size']:
                 _states, _actions, _result_states, _rewards, falls, _G_ts, exp_actions = model.getExperience().get_batch(settings['batch_size'])
-                error = model.bellman_error(_states, _actions, _rewards, _result_states, falls)
-                # print("Episode bellman error: ", error)
+                error = model.bellman_error(_states, _actions, _rewards, _result_states, falls)                
             else :
                 error = [[0]]
                 print ("Error: not enough samples in experience to check bellman error: ", model.getExperience().samples(), " needed " , settings['batch_size'])
-            # states, actions, result_states, rewards = experience.get_batch(64)
-            # error = model.bellman_error(states, actions, rewards, result_states)
-            # print (states, actions, rewards, result_states, discounted_sum, value)
             error = np.mean(np.fabs(error))
-            # print ("Round: " + str(round_) + " Epoch: " + str(epoch) + " With reward_sum: " + str(np.sum(rewards)) + " bellman error: " + str(error))
             discounted_values.append(discounted_sum)
             values.append(value)
-            # print ("Rewards over eval epoch: ", rewards)
-            # This works better because epochs can terminate early, which is bad.
             reward_over_epocs.append(np.mean(np.array(rewards)))
             bellman_errors.append(error)
             evalDatas.append(evalData)
@@ -995,8 +823,7 @@ def simModelParrallel(sw_message_queues, eval_episode_data_queue, model, setting
     value = []
     evalData = []
     i = 0 
-    while i < anchors: # half the anchors
-        
+    while i < anchors: # half the anchors        
         j = 0
         while (j < settings['num_available_threads']) and ( (i + j) < anchors):
             episodeData = {}
@@ -1020,12 +847,6 @@ def simModelParrallel(sw_message_queues, eval_episode_data_queue, model, setting
             value.append(value_)
             evalData.append(evalData_)
             j += 1
-            """
-            simEpoch(actor, exp, 
-                    model, discount_factor, anchors=anchs, action_space_continuous=action_space_continuous, 
-                    settings=settings, print_data=print_data, p=0.0, validation=True, epoch=epoch_, evaluation=evaluation,
-                    visualizeEvaluation=visualizeEvaluation)
-            """
             epoch_ = epoch_ + 1
             (states_, actions_, result_states_, rewards_, falls_, G_ts_, advantage_, exp_actions_) = tuples
             states.extend(states_)
@@ -1051,8 +872,6 @@ def collectExperience(actor, exp_val, model, settings, sim_work_queues=None,
     settings['use_model_based_action_optimization'] = False
     action_selection = range(len(settings["discrete_actions"]))
     print ("Action selection: " + str(action_selection))
-    # state_bounds = np.array(settings['state_bounds'])
-    # state_bounds = np.array([[0],[0]])
     reward_bounds=np.array(settings["reward_bounds"])
     action_bounds = np.array(settings["action_bounds"], dtype=float)
     state_bounds = np.array(settings['state_bounds'], dtype=float)
@@ -1060,9 +879,7 @@ def collectExperience(actor, exp_val, model, settings, sim_work_queues=None,
     if (settings["bootsrap_with_discrete_policy"]) and (settings['bootstrap_samples'] > 0):
         (states, actions, resultStates, rewards_, falls_, G_ts_, exp_actions) = collectExperienceActionsContinuous(actor, exp_val, model, settings['bootstrap_samples'], settings=settings, action_selection=action_selection, sim_work_queues=sim_work_queues, 
                                                                                                                    eval_episode_data_queue=eval_episode_data_queue)
-        # states = np.array(states)
-        # states = np.append(states, state_bounds,0) # Adding that already specified bounds will ensure the final calculated is beyond these
-        print (" Shape states: ", states.shape)
+        
         print (" Shape Actions: ", actions.shape)
         print (" Shape result states: ", resultStates.shape)
         print (" Shape rewards_: ", rewards_.shape)
@@ -1083,23 +900,11 @@ def collectExperience(actor, exp_val, model, settings, sim_work_queues=None,
         if (settings['state_normalization'] == "minmax"):
             state_bounds[0] = states[:settings['bootstrap_samples']].min(0)
             state_bounds[1] = states[:settings['bootstrap_samples']].max(0)
-            # reward_bounds[0] = rewards_[:settings['bootstrap_samples']].min(0)
-            # reward_bounds[1] = rewards_[:settings['bootstrap_samples']].max(0)
-            # action_bounds[0] = actions[:settings['bootstrap_samples']].min(0)
-            # action_bounds[1] = actions[:settings['bootstrap_samples']].max(0)
         elif (settings['state_normalization'] == "variance"):
-            """
-            state_bounds[0] = state_avg - (state_stddev * 2.0)
-            state_bounds[1] = state_avg + (state_stddev * 2.0)
-            reward_bounds[0] = reward_avg - (reward_stddev * 2.0)
-            reward_bounds[1] = reward_avg + (reward_stddev * 2.0)
-            """
             state_bounds[0] = state_avg - (state_stddev * 2.0)
             state_bounds[1] = state_avg + (state_stddev * 2.0)
             reward_bounds[0] = reward_avg - (reward_stddev)
             reward_bounds[1] = reward_avg + (reward_stddev)
-            # action_bounds[0] = action_avg - action_stddev
-            # action_bounds[1] = action_avg + action_stddev
         elif (settings['state_normalization'] == "given"):
             # pass # Use bound specified in file
             state_bounds = np.array(settings['state_bounds'], dtype=float)
@@ -1135,16 +940,11 @@ def collectExperience(actor, exp_val, model, settings, sim_work_queues=None,
         experience.setRewardBounds(reward_bounds)
         experience.setActionBounds(action_bounds)
         
-        for state, action, resultState, reward_, fall_, G_t, exp_action in zip(states, actions, resultStates, rewards_, falls_, G_ts_, exp_actions):
-            # if reward_ > settings['reward_lower_bound']: # Skip if reward gets too bad, skips nan too?
-            if settings['action_space_continuous']:
-                # experience.insert(norm_state(state, state_bounds), norm_action(action, action_bounds), norm_state(resultState, state_bounds), norm_reward([reward_], reward_bounds))
+        for state, action, resultState, reward_, fall_, G_t, exp_action in zip(states, actions, resultStates, rewards_, falls_, G_ts_, exp_actions):            
+            if settings['action_space_continuous']:                
                 experience.insertTuple(([state], [action], [resultState], [reward_], [fall_], G_t, [exp_action]))
             else:
                 experience.insertTuple(([state], [action], [resultState], [reward_], [falls_], G_t, [exp_action]))
-            # else:
-                # print ("Tuple with reward: " + str(reward_) + " skipped")
-        # sys.exit()
     else: ## Most likely performing continuation learning
         if settings['action_space_continuous']:
             experience = ExperienceMemory(len(model.getStateBounds()[0]), len(model.getActionBounds()[0]), settings['expereince_length'], continuous_actions=True, settings = settings)
@@ -1154,18 +954,6 @@ def collectExperience(actor, exp_val, model, settings, sim_work_queues=None,
             experience.setStateBounds(model.getStateBounds())
             experience.setRewardBounds(model.getRewardBounds())
             experience.setActionBounds(model.getActionBounds())
-        """
-        (states, actions, resultStates, rewards_) = collectExperienceActionsContinuous(exp, settings['expereince_length'], settings=settings, action_selection=action_selection)
-        # states = np.array(states)
-        state_bounds[0] = states.min(0)
-        state_bounds[1] = states.max(0)
-        reward_bounds[0][0] = rewards_.min(0)
-        print ("Max State:" + str(state_bounds[1]))
-        print ("Min State:" + str(state_bounds[0]))
-        print ("Min Reward:" + str(reward_bounds[0]))
-        """
-        
-        
     return  experience, state_bounds, reward_bounds, action_bounds
 
 # @profile(precision=5)
@@ -1178,10 +966,6 @@ def collectExperienceActionsContinuous(actor, exp, model, samples, settings, act
     falls = []
     G_ts = []
     exp_actions = []
-    # anchor_data_file = open(settings["anchor_file"])
-    # _anchors = getAnchors(anchor_data_file)
-    # print ("Length of anchors epochs: " + str(len(_anchors)))
-    # anchor_data_file.close()
     episode_ = 0
     while i < samples:
         ## Actor should be FIRST here
@@ -1195,14 +979,11 @@ def collectExperienceActionsContinuous(actor, exp, model, samples, settings, act
                                  eval_episode_data_queue=eval_episode_data_queue, 
                                  anchors=settings['epochs'],
                                  type='bootstrapping')
-        # if self._p <= 0.0:
-        #    self._output_queue.put(out)
         (tuples, discounted_sum_, q_value_, evalData) = out
         (states_, actions_, result_states_, rewards_, falls_, G_t_, advantage, exp_actions_) = tuples
         if (settings["print_levels"][settings["print_level"]] >= settings["print_levels"]['train']):
             print ("Shape other states_: ", np.array(states_).shape)
             print ("Shape other action_: ", np.array(actions_).shape)
-        # print ("States: ", states_)
         states.extend(states_)
         actions.extend(actions_)
         rewards.extend(rewards_)
@@ -1216,10 +997,6 @@ def collectExperienceActionsContinuous(actor, exp, model, samples, settings, act
         episode_ = episode_ % settings["epochs"]
         if (settings["print_levels"][settings["print_level"]] >= settings["print_levels"]['train']):
             print("Number of Experience samples so far: ", i)
-        # print ("States: ", states)
-        # print ("Actions: ", actions)
-        # print ("Rewards: ", rewards)
-        # print ("ResultStates: ", resultStates)
         
 
     print ("Done collecting experience.")
@@ -1237,11 +1014,8 @@ def modelEvaluationParallel(settings_file_name):
     import os    
     os.environ['THEANO_FLAGS'] = "mode=FAST_RUN,device="+settings['training_processor_type']+",floatX="+settings['float_type']
     
-    ## Theano needs to be imported after the flags are set.
-    # from ModelEvaluation import *
-    # from model.ModelUtil import *
+
     from ModelEvaluation import SimWorker, evalModelParrallel, collectExperience
-    # from model.ModelUtil import validBounds
     from model.LearningAgent import LearningAgent, LearningWorker
     from util.SimulationUtil import validateSettings, createEnvironment, createRLAgent, createActor
     from util.SimulationUtil import getDataDirectory, createForwardDynamicsModel
@@ -1250,19 +1024,11 @@ def modelEvaluationParallel(settings_file_name):
     from util.ExperienceMemory import ExperienceMemory
     from RLVisualize import RLVisualize
     from NNVisualize import NNVisualize
-    
-    # from model.ModelUtil import *
-    # from actor.ActorInterface import *
-    # from util.SimulationUtil import *
-    
-    # anchor_data_file = open(settings["anchor_file"])
-    # _anchors = getAnchors(anchor_data_file)
-    # anchor_data_file.close()
+
     model_type= settings["model_type"]
     directory= getDataDirectory(settings)
     rounds = settings["rounds"]
     epochs = settings["epochs"]
-    # num_states=settings["num_states"]
     epsilon = settings["epsilon"]
     discount_factor=settings["discount_factor"]
     # max_reward=settings["max_reward"]
@@ -1366,16 +1132,11 @@ def modelEvaluationParallel(settings_file_name):
     exp_val.getActor().init()
     exp_val.init()
     
-    # exp = createEnvironment(str(settings["sim_config_file"]), str(settings['environment_type']), settings, render=True)
-    # exp = createEnvironment(str(settings["sim_config_file"]), str(settings['environment_type']), settings, render=False)
     exp = exp_val
     exp.setActor(actor)
     if (settings['train_forward_dynamics']):
-        # actor.setForwardDynamicsModel(forwardDynamicsModel)
         forwardDynamicsModel.setActor(actor)
         masterAgent.setForwardDynamics(forwardDynamicsModel)
-        # forwardDynamicsModel.setEnvironment(exp)
-    # actor.setPolicy(model)
     
     exp.getActor().init()   
     exp.init()
@@ -1393,54 +1154,15 @@ def modelEvaluationParallel(settings_file_name):
     masterAgent.setSettings(settings)
     masterAgent.setExperience(experience)
     masterAgent.setPolicy(model)
-    
-    # masterAgent.setPolicy(model)
-    # masterAgent.setForwardDynamics(forwardDynamicsModel)
+
     namespace.agentPoly = masterAgent.getPolicy().getNetworkParameters()
     namespace.model = model
-    
-    # mean_reward, std_reward, mean_bellman_error, std_bellman_error, mean_discount_error, std_discount_error, mean_eval, std_eval = evalModel(actor, exp, masterAgent, discount_factor, anchors=settings['eval_epochs'], 
-    #                                                                                                                     action_space_continuous=action_space_continuous, settings=settings, print_data=True, evaluation=True,
-    #                                                                                                                   visualizeEvaluation=expected_value_viz)
-        # simEpoch(exp, model, discount_factor=discount_factor, anchors=_anchors[:settings['eval_epochs']][9], action_space_continuous=True, settings=settings, print_data=True, p=0.0, validation=True)
-    
+        
     for k in range(5):
         mean_reward, std_reward, mean_bellman_error, std_bellman_error, mean_discount_error, std_discount_error, mean_eval, std_eval = evalModelParrallel( input_anchor_queue=input_anchor_queue,
                                                                 model=masterAgent, settings=settings, eval_episode_data_queue=eval_episode_data_queue, anchors=settings['eval_epochs'])
     
         print ("Mean eval: ", mean_eval)
-    """
-    workers = []
-    input_anchor_queue = Queue(settings['queue_size_limit'])
-    output_experience_queue = Queue(settings['queue_size_limit'])
-    for process in range(settings['num_available_threads']):
-         # this is the process that selects which game to play
-        exp = characterSim.Experiment(c)
-        if settings['environment_type'] == 'pendulum_env_state':
-            print ("Using Environment Type: " + str(settings['environment_type']))
-            exp = PendulumEnvState(exp)
-        elif settings['environment_type'] == 'pendulum_env':
-            print ("Using Environment Type: " + str(settings['environment_type']))
-            exp = PendulumEnv(exp)
-        else:
-            print ("Invalid environment type: " + str(settings['environment_type']))
-            sys.exit()
-                
-        
-        exp.getActor().init()   
-        exp.init()
-        
-        w = SimWorker(input_anchor_queue, output_experience_queue, exp, model, discount_factor, action_space_continuous=action_space_continuous, 
-                settings=settings, print_data=False, p=0.0, validation=True)
-        w.start()
-        workers.append(w)
-        
-    mean_reward, std_reward, mean_bellman_error, std_bellman_error, mean_discount_error, std_discount_error = evalModelParrallel(
-        input_anchor_queue, output_experience_queue, discount_factor, anchors=_anchors[:settings['eval_epochs']], action_space_continuous=action_space_continuous, settings=settings)
-    
-    for w in workers:
-        input_anchor_queue.put(None)
-       """ 
     print ("Mean Evaluation: " + str(mean_eval))
     
     print ("Terminating Workers")
@@ -1558,15 +1280,12 @@ def modelEvaluation(settings_file_name, runLastModel=False, settings=None):
         print ("Transferring task portion of model.")
         model.setTaskNetworkParameters(taskModel)
 
-    # this is the process that selects which game to play
     
 
     if (settings['train_forward_dynamics']):
-        # actor.setForwardDynamicsModel(forwardDynamicsModel)
         forwardDynamicsModel.setActor(actor)
         masterAgent.setForwardDynamics(forwardDynamicsModel)
-        # forwardDynamicsModel.setEnvironment(exp)
-    # actor.setPolicy(model)
+
     
     exp.setActor(actor)
     exp.getActor().init()   
@@ -1586,40 +1305,6 @@ def modelEvaluation(settings_file_name, runLastModel=False, settings=None):
     mean_reward, std_reward, mean_bellman_error, std_bellman_error, mean_discount_error, std_discount_error, mean_eval, std_eval = evalModel(actor, exp, masterAgent, discount_factor, anchors=settings['eval_epochs'], 
                                                                                                                         action_space_continuous=action_space_continuous, settings=settings, print_data=True, evaluation=True,
                                                                                                                         visualizeEvaluation=expected_value_viz)
-        # simEpoch(exp, model, discount_factor=discount_factor, anchors=_anchors[:settings['eval_epochs']][9], action_space_continuous=True, settings=settings, print_data=True, p=0.0, validation=True)
-    
-    """
-    workers = []
-    input_anchor_queue = Queue(settings['queue_size_limit'])
-    output_experience_queue = Queue(settings['queue_size_limit'])
-    for process in range(settings['num_available_threads']):
-         # this is the process that selects which game to play
-        exp = characterSim.Experiment(c)
-        if settings['environment_type'] == 'pendulum_env_state':
-            print ("Using Environment Type: " + str(settings['environment_type']))
-            exp = PendulumEnvState(exp)
-        elif settings['environment_type'] == 'pendulum_env':
-            print ("Using Environment Type: " + str(settings['environment_type']))
-            exp = PendulumEnv(exp)
-        else:
-            print ("Invalid environment type: " + str(settings['environment_type']))
-            sys.exit()
-                
-        
-        exp.getActor().init()   
-        exp.init()
-        
-        w = SimWorker(input_anchor_queue, output_experience_queue, exp, model, discount_factor, action_space_continuous=action_space_continuous, 
-                settings=settings, print_data=False, p=0.0, validation=True)
-        w.start()
-        workers.append(w)
-        
-    mean_reward, std_reward, mean_bellman_error, std_bellman_error, mean_discount_error, std_discount_error = evalModelParrallel(
-        input_anchor_queue, output_experience_queue, discount_factor, anchors=_anchors[:settings['eval_epochs']], action_space_continuous=action_space_continuous, settings=settings)
-    
-    for w in workers:
-        input_anchor_queue.put(None)
-       """ 
     print ("Average Reward: " + str(mean_reward))
     
     
@@ -1646,8 +1331,7 @@ if __name__ == "__main__":
         if ( not (options[option] is None) ):
             print ("Updateing option: ", option, " = ", options[option])
             settings[option] = options[option]
-        # settings['num_available_threads'] = options['num_available_threads']
-
+        
     print ("Settings: " + str(json.dumps(settings, indent=4)))
     
     modelEvaluation(sys.argv[1], runLastModel=True, settings=settings)

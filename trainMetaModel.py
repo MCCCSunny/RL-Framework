@@ -1,15 +1,12 @@
-
-
 from trainModel import trainModelParallel
 import sys
 import json
 import copy
 from pathos.threading import ThreadPool
 from pathos.multiprocessing import ProcessingPool
-# from threading import ThreadPool
 import time
 import datetime
-
+import pdb
 from util.SimulationUtil import getDataDirectory, getBaseDataDirectory, getRootDataDirectory, getAgentName
 
 def _trainMetaModel(input):
@@ -69,10 +66,10 @@ def trainMetaModel(settingsFileName, samples=10, settings=None, numThreads=1, hy
         
         sim_settings.append(copy.deepcopy(settings))
         sim_settingFileNames.append(settingsFileName)
-        sim_data.append((settingsFileName,copy.deepcopy(settings)))
-        
+        sim_data.append((settingsFileName,copy.deepcopy(settings))) # 
+
         ## Create data directory and copy any desired files to these folders .
-        if ( not (hyperSettings is None) ):
+        if (not (hyperSettings is None) ):
             hyper_settings = hyperSettings
             directory= getDataDirectory(settings)
             if not os.path.exists(directory):
@@ -80,11 +77,10 @@ def trainMetaModel(settingsFileName, samples=10, settings=None, numThreads=1, hy
             if ('saved_model_path' in hyperSettings):
                 print ("Copying fd model: ", hyperSettings['saved_model_path'])            
                 shutil.copy2(hyperSettings['saved_model_path'], directory+getAgentName()+"_Best.pkl" )
-            if ( 'saved_model_folder' in hyperSettings):
+            #if ( 'saved_model_folder' in hyperSettings):
                 ### Copy models from other metamodel simulation
                 ### Purposefully not copying the "Best" model but the last instead
-                shutil.copy2(hyperSettings['saved_model_folder']+"/_" + str(i)+'/'+settings['model_type']+'/'+getAgentName()+".pkl", directory+getAgentName()+"_Best.pkl" )
-                
+                #shutil.copy2(hyperSettings['saved_model_folder']+"/_" + str(i)+'/'+settings['model_type']+'/'+getAgentName()+".pkl", directory+getAgentName()+"_Best.pkl" )   
     p = ProcessingPool(numThreads)
     t0 = time.time()
     if ( (hyperSettings is not None) and ('testing' in hyper_settings and (hyper_settings['testing']))):
@@ -143,7 +139,7 @@ def trainMetaModel_(args):
         
         root_data_dir = getRootDataDirectory(simSettings_)+"/"
         
-        if ( len(args) == 6 ):
+        if (len(args) == 6):
             hyperSettings_['saved_model_path'] = args[5]
             result = trainMetaModel(args[1], samples=int(args[3]), settings=copy.deepcopy(simSettings_), numThreads=int(args[4]), hyperSettings=hyperSettings_)
         else:
@@ -180,8 +176,7 @@ def trainMetaModel_(args):
             print("Error plotting data there my not be a DISPLAY available.")
             print("Error: ", e)
         dataTar.close()
-        
-        
+                
         ## Send an email so I know this has completed
         result["settings_files"] = None ## Remove extra info
         contents_ = json.dumps(hyperSettings_, indent=4, sort_keys=True) + "\n" + json.dumps(result, indent=4, sort_keys=True)

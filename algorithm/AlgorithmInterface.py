@@ -345,24 +345,13 @@ class AlgorithmInterface(object):
             pass
         else:
         """
-        # print ("Agent state bounds: ", self._state_bounds)
         state = norm_state(state, self._state_bounds)
-        # print ("Agent normalized state: ", state)
         state = np.array(state, dtype=self._settings['float_type'])
         self._model.setStates(state)
-        # action_ = lasagne.layers.get_output(self._model.getActorNetwork(), state, deterministic=deterministic_).mean()
-        # action_ = scale_action(self._q_action()[0], self._action_bounds)
-        # if deterministic_:
         if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
             action_ = self._q_action()[0]
-            # action_ = scale_action(self._q_action()[0], self._action_bounds)
         else:
             action_ = scale_action(self._q_action()[0], self._action_bounds)
-        # print ("Agent Scaled action: ", action_)
-        # action_ = scale_action(self._q_action_target()[0], self._action_bounds)
-        # else:
-        # action_ = scale_action(self._q_action()[0], self._action_bounds)
-        # action_ = q_valsActA[0]
         return action_
     
     def predict_batch(self, states, deterministic_=True):
