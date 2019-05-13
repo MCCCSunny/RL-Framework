@@ -299,16 +299,16 @@ class Distillation(AlgorithmInterface):
                 action_ = norm_state(action_, self.getActionBounds())
                 actions_.append(action_)
             actions_ = np.array(actions_, dtype=self.getSettings()['float_type'])
-        actions = actions_
+        actions = actions_ #expert actions
         
-        for i in range(states.shape[0]): ### Put data in buffer
+        for i in range(states.shape[0]): ### Put data in buffer 
             self._actor_buffer_diff.append([1.0])
             self._actor_buffer_states.append(states[i])
             self._actor_buffer_actions.append(actions[i])
             self._actor_buffer_rewards.append(rewards[i])
             self._actor_buffer_result_states.append(result_states[i])
             self._actor_buffer_falls.append(falls[i])
-        while ( len(self._actor_buffer_diff) > self.getSettings()['batch_size'] ):
+        while (len(self._actor_buffer_diff) > self.getSettings()['batch_size']):
             ### Get batch from buffer
             tmp_states = self._actor_buffer_states[:self.getSettings()['batch_size']]
             tmp_actions = self._actor_buffer_actions[:self.getSettings()['batch_size']]

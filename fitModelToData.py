@@ -24,19 +24,14 @@ import math
 import numpy as np
 
 import random
-# import cPickle
 import dill
 import dill as pickle
 import dill as cPickle
 
 import cProfile, pstats, io
-# import memory_profiler
-# import psutil
-import gc
-# from guppy import hpy; h=hpy()
-# from memprof import memprof
 
-# import pathos.multiprocessing
+import gc
+
 import multiprocessing
 
 def fitModelToData(settingsFileName):
@@ -52,10 +47,6 @@ def fitModelToData(settingsFileName):
     import os    
     os.environ['THEANO_FLAGS'] = "mode=FAST_RUN,device="+settings['training_processor_type']+",floatX="+settings['float_type']
     
-    ## Theano needs to be imported after the flags are set.
-    # from ModelEvaluation import *
-    # from model.ModelUtil import *
-    # print ( "theano.config.mode: ", theano.config.mode)
     from ModelEvaluation import SimWorker, evalModelParrallel, collectExperience, simEpoch, evalModel
     from model.ModelUtil import validBounds
     from model.LearningAgent import LearningAgent, LearningWorker
@@ -73,11 +64,7 @@ def fitModelToData(settingsFileName):
     import time  
     
     settings = validateSettings(settings)
-    
-    # anchor_data_file = open(settings["anchor_file"])
-    # _anchors = getAnchors(anchor_data_file)
-    # print ("Length of anchors epochs: ", str(len(_anchors)))
-    # anchor_data_file.close()
+
     train_forward_dynamics=True
     model_type= settings["model_type"]
     directory= getDataDirectory(settings)
@@ -85,21 +72,15 @@ def fitModelToData(settingsFileName):
     num_actions= discrete_actions.shape[0] # number of rows
     rounds = settings["rounds"]
     epochs = settings["epochs"]
-    # num_states=settings["num_states"]
     epsilon = settings["epsilon"]
     discount_factor=settings["discount_factor"]
-    # max_reward=settings["max_reward"]
     reward_bounds=np.array(settings["reward_bounds"])
     batch_size=settings["batch_size"]
     train_on_validation_set=settings["train_on_validation_set"]
     state_bounds = np.array(settings['state_bounds'])
     discrete_actions = np.array(settings['discrete_actions'])
     print ("Sim config file name: ", str(settings["sim_config_file"]))
-    # c = characterSim.Configuration(str(settings["sim_config_file"]))
-    # c = characterSim.Configuration("../data/epsilon0Config.ini")
     action_space_continuous=settings['action_space_continuous']
-    # states2 = np.transpose(np.repeat([states], 2, axis=0))
-    # print states2
     if action_space_continuous:
         action_bounds = np.array(settings["action_bounds"], dtype=float)
     
@@ -108,7 +89,6 @@ def fitModelToData(settingsFileName):
     else:
         experience = ExperienceMemory(len(state_bounds[0]), 1, settings['expereince_length'])
     file_name=directory+getAgentName()+"expBufferInit.hdf5"
-    # experience.saveToFile(file_name)
     experience.loadFromFile(file_name)
     state_bounds = experience._state_bounds
     action_bounds = experience._action_bounds
@@ -118,30 +98,14 @@ def fitModelToData(settingsFileName):
     mgr = multiprocessing.Manager()
     namespace = mgr.Namespace()
     learning_workers = []
-    # for process in range(settings['num_available_threads']):
     for process in range(1):
         # this is the process that selects which game to play
         agent = LearningAgent(n_in=len(state_bounds[0]), n_out=len(action_bounds[0]), state_bounds=state_bounds, 
                           action_bounds=action_bounds, reward_bound=reward_bounds, settings_=settings)
         
         agent.setSettings(settings)
-        """
-        if action_space_continuous:
-            model = createRLAgent(settings['agent_name'], state_bounds, action_bounds, reward_bounds, settings)
-        else:
-            model = createRLAgent(settings['agent_name'], state_bounds, discrete_actions, reward_bounds, settings)
-        model.setStateBounds(state_bounds)
-        model.setActionBounds(action_bounds)
-        model.setRewardBounds(reward_bounds)
-        """
-        # agent.setPolicy(model)
-        # actor.setPolicy(model)
-        # agent.setExperience(experience)
-        # namespace.agentPoly = agent.getPolicy().getNetworkParameters()
-        # namespace.experience = experience
         
         lw = LearningWorker(output_experience_queue, agent, namespace)
-        # lw.start()
         learning_workers.append(lw)  
     masterAgent = agent
     masterAgent.setExperience(experience)
@@ -162,31 +126,19 @@ def fitModelToData(settingsFileName):
     
     if (settings['train_forward_dynamics']):
         print ("Created forward dynamics network")
-        # forwardDynamicsModel = ForwardDynamicsNetwork(state_length=len(state_bounds[0]),action_length=len(action_bounds[0]), state_bounds=state_bounds, action_bounds=action_bounds, settings_=settings)
         forwardDynamicsModel = createForwardDynamicsModel(settings, state_bounds, action_bounds, None, None)
         masterAgent.setForwardDynamics(forwardDynamicsModel)
-        forwardDynamicsModel.setActor(actor)
-        # forwardDynamicsModel.setEnvironment(exp)
+        forwardDynamicsModel.setActor(actor)        
         forwardDynamicsModel.init(len(state_bounds[0]), len(action_bounds[0]), state_bounds, action_bounds, actor, None, settings)
         namespace.forwardNN = masterAgent.getForwardDynamics().getNetworkParameters()
-        # actor.setForwardDynamicsModel(forwardDynamicsModel)
         namespace.forwardDynamicsModel = forwardDynamicsModel
     
     ## Now everything related to the exp memory needs to be updated
     bellman_errors=[]
     masterAgent.setPolicy(model)
-    # masterAgent.setForwardDynamics(forwardDynamicsModel)
     namespace.agentPoly = masterAgent.getPolicy().getNetworkParameters()
     namespace.model = model
-    # experience = ExperienceMemory(len(state_bounds[0]), len(action_bounds[0]), experience_length, continuous_actions=True)
-    """
-    for i in range(experience_length):
-        action_ = np.array([actions[i]])
-        state_ = np.array([states[i]])
-        # print "Action: " + str([actions[i]])
-        experience.insert(norm_state(state_, state_bounds), norm_action(action_, action_bounds),
-                           norm_state(state_, state_bounds), norm_reward(np.array([0]), reward_bounds))
-    """
+    
     
     if (settings['visualize_learning']):
         rlv = NNVisualize(title=str(directory), settings=settings)
@@ -235,25 +187,11 @@ def fitModelToData(settingsFileName):
     trainData["mean_actor_regularization_cost"]=[]
     trainData["std_actor_regularization_cost"]=[]
         
-    # dynamicsLosses=[]
     best_dynamicsLosses=1000000
     _states, _actions, _result_states, _rewards, _falls, _G_ts = experience.get_batch(batch_size)
-    """
-    _states = theano.shared(np.array(_states, dtype=theano.config.floatX))
-    _actions = theano.shared(np.array(_actions, dtype=theano.config.floatX))
-    _result_states = theano.shared(np.array(_result_states, dtype=theano.config.floatX))
-    _rewards = theano.shared(np.array(_rewards, dtype=theano.config.floatX))
-    """
     for round_ in range(rounds):
         t0 = time.time()
-        # out = simEpoch(actor, exp_val, masterAgent, discount_factor, anchors=epoch, action_space_continuous=action_space_continuous, settings=settings, 
-        #                print_data=False, p=1.0, validation=False, epoch=epoch, evaluation=False, _output_queue=None )
-        # (tuples, discounted_sum, q_value, evalData) = out
-        # (__states, __actions, __result_states, __rewards, __falls, __G_ts) = tuples
         __states, __actions, __result_states, __rewards, __falls, __G_ts = experience.get_batch(100)
-        # print("**** training states: ", np.array(__states).shape)
-        # print("**** training __result_states: ", np.array(__result_states).shape)
-        # print ("Actions before: ", __actions)
         for i in range(1):
             masterAgent.train(_states=__states, _actions=__actions, _rewards=__rewards, _result_states=__result_states, _falls=__falls)
         t1 = time.time()
@@ -270,12 +208,6 @@ def fitModelToData(settingsFileName):
                 criticRegularizationCosts.append(regularizationCost__)
                 
             if (settings['debug_actor']):
-                """
-                print( "Advantage: ", masterAgent.getPolicy()._get_advantage())
-                print("Policy prob: ", masterAgent.getPolicy()._q_action())
-                print("Policy log prob: ", masterAgent.getPolicy()._get_log_prob())
-                print( "Actor loss: ", masterAgent.getPolicy()._get_action_diff())
-                """
                 loss__ = masterAgent.getPolicy()._get_actor_loss() # uses previous call batch data
                 actorLosses.append(loss__)
                 regularizationCost__ = masterAgent.getPolicy()._get_actor_regularization()
@@ -299,28 +231,9 @@ def fitModelToData(settingsFileName):
                 print ("Round: " + str(round_) + " bellman error: " + str(error) + " ForwardPredictionLoss: " + str(dynamicsLoss) + " in " + str(time_taken) + " seconds")
             else:
                 print ("Round: " + str(round_) + " bellman error: " + str(error) + " in " + str(time_taken) + " seconds")
-            # discounted_values.append(discounted_sum)
+           
 
         print ("Master agent experience size: " + str(masterAgent.getExperience().samples()))
-        # print ("**** Master agent experience size: " + str(learning_workers[0]._agent._expBuff.samples()))
-        # masterAgent.getPolicy().setNetworkParameters(namespace.agentPoly)
-        # masterAgent.setExperience(learningNamespace.experience)
-        # if (settings['train_forward_dynamics']):
-        #     masterAgent.getForwardDynamics().setNetworkParameters(namespace.forwardNN)
-        """
-        for sw in sim_workers: # Should update these more often?
-            sw._model.getPolicy().setNetworkParameters(namespace.agentPoly)
-            if (settings['train_forward_dynamics']):
-                sw._model.getForwardDynamics().setNetworkParameters(namespace.forwardNN)
-                """
-        # experience = learningNamespace.experience
-        # actor.setExperience(experience)
-        """
-        pr.disable()
-        f = open('x.prof', 'a')
-        pstats.Stats(pr, stream=f).sort_stats('time').print_stats()
-        f.close()
-        """
         trainData["mean_bellman_error"].append(np.mean(np.fabs(bellman_errors)))
         trainData["std_bellman_error"].append(np.std(bellman_errors))
         if (settings['visualize_learning']):

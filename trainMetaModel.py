@@ -77,13 +77,9 @@ def trainMetaModel(settingsFileName, samples=10, settings=None, numThreads=1, hy
             if ('saved_model_path' in hyperSettings):
                 print ("Copying fd model: ", hyperSettings['saved_model_path'])            
                 shutil.copy2(hyperSettings['saved_model_path'], directory+getAgentName()+"_Best.pkl" )
-            #if ( 'saved_model_folder' in hyperSettings):
-                ### Copy models from other metamodel simulation
-                ### Purposefully not copying the "Best" model but the last instead
-                #shutil.copy2(hyperSettings['saved_model_folder']+"/_" + str(i)+'/'+settings['model_type']+'/'+getAgentName()+".pkl", directory+getAgentName()+"_Best.pkl" )   
     p = ProcessingPool(numThreads)
     t0 = time.time()
-    if ( (hyperSettings is not None) and ('testing' in hyper_settings and (hyper_settings['testing']))):
+    if ((hyperSettings is not None) and ('testing' in hyper_settings and (hyper_settings['testing']))):
         print("Not simulating, this is a testing run:")
     else:
         result = p.map(trainModelParallel, sim_data)
