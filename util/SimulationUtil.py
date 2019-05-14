@@ -57,21 +57,11 @@ def addDataToTarBall(tarfile_, settings, fileName=None):
             if (split_[1] in ['.py', '.json']):
                 print("Adding file: ", filename_tmp)
                 tarfile_.add(dir+filename_tmp)
-    """
-    fileName_ = dir+"trainingData_" + str(settings['agent_name']) + ".json"
-    if os.path.exists(fileName_):
-        tarfile_.add(fileName_)
-    else:
-        print ( "File does not exists: ", fileName_)
-    """
     if ( not ( fileName is None) ):
         if os.path.exists(fileName):
             tarfile_.add(fileName)
         else:
             print ( "File does not exists: ", fileName)
-    
-        
-    # tarfile.add('/README.md')
 
 def addPicturesToTarBall(tarfile_, settings, fileName=None):
     import os
@@ -79,16 +69,12 @@ def addPicturesToTarBall(tarfile_, settings, fileName=None):
     ## add all json and py files
     if ( fileName is None ):
         dir = getRootDataDirectory(settings)+"/" + settings['data_folder'] + "/"
-        # dir = getDataDirectory(settings)
         for filename_tmp in os.listdir(dir):
             print("Possible include file: ", os.path.splitext(filename_tmp))
             split_ = os.path.splitext(filename_tmp)
             if (split_[1] in ['.png', '.svg']):
                 print("Adding file: ", filename_tmp)
                 tarfile_.add(dir+filename_tmp)
-    
-        
-    # tarfile.add('/README.md')
 
 def my_import(name):
     components = name.split('.')
@@ -217,7 +203,6 @@ def createNetworkModel(model_type, state_bounds, action_bounds, reward_bounds, s
                           action_bounds=action_bounds, reward_bound=reward_bounds, settings_=settings)
     else:
         from model.ModelInterface import ModelInterface
-        # modelClass = my_import(path_)
         modelClass = locate(model_type)
         if ( issubclass(modelClass, ModelInterface)): ## Double check this load will work
             model = modelClass(n_in=len(state_bounds[0]), n_out=n_out_, state_bounds=state_bounds, 
@@ -379,7 +364,6 @@ def createRLAgent(algorihtm_type, state_bounds, discrete_actions, reward_bounds,
         else:
             print ("Unknown learning algorithm type: " + str(algorihtm_type))
             raise ValueError("Unknown learning algorithm type: " + str(algorihtm_type))
-        # sys.exit(2)
         
     if (settings['load_saved_model'] == "network_and_scales"):
         ### In this case we want to change algroithm but want to keep the policy network
@@ -405,7 +389,6 @@ def createRLAgent(algorihtm_type, state_bounds, discrete_actions, reward_bounds,
 def createEnvironment(config_file, env_type, settings, render=False, index=None):
     
     ### For multitasking, can specify a list of config files
-    # if ( isinstance(config_file, list ) ):
     if type(config_file) is list:
         config_file = config_file[index]
         print ("Using config file: ", config_file)
@@ -419,7 +402,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.BallGame2DEnv import BallGame2DEnv
         file = open(config_file)
         conf = json.load(file)
-        # print ("Settings: " + str(json.dumps(conf)))
         file.close()
         conf['render'] = render
         exp = BallGame2D(conf)
@@ -430,7 +412,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.BallGame1DEnv import BallGame1DEnv
         file = open(config_file)
         conf = json.load(file)
-        # print ("Settings: " + str(json.dumps(conf)))
         file.close()
         conf['render'] = render
         exp = BallGame1D(conf)
@@ -441,7 +422,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.GapGame1DEnv import GapGame1DEnv
         file = open(config_file)
         conf = json.load(file)
-        # print ("Settings: " + str(json.dumps(conf)))
         file.close()
         conf['render'] = render
         exp = GapGame1D(conf)
@@ -452,7 +432,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.GapGame2DEnv import GapGame2DEnv
         file = open(config_file)
         conf = json.load(file)
-        # print ("Settings: " + str(json.dumps(conf)))
         file.close()
         conf['render'] = render
         exp = GapGame2D(conf)
@@ -461,11 +440,7 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
     elif env_type == 'nav_Game':
         from env.NavGame import NavGame
         from sim.NavGameEnv import NavGameEnv
-        # file = open(config_file)
-        # conf = json.load(file)
         conf = copy.deepcopy(settings)
-        # print ("Settings: " + str(json.dumps(conf)))
-        # file.close()
         conf['render'] = render
         exp = NavGame(conf)
         exp = NavGameEnv(exp, settings)
@@ -473,11 +448,7 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
     elif env_type == 'Particle_Sim':
         from env.ParticleGame import ParticleGame
         from sim.ParticleSimEnv import ParticleSimEnv
-        # file = open(config_file)
-        # conf = json.load(file)
         conf = copy.deepcopy(settings)
-        # print ("Settings: " + str(json.dumps(conf)))
-        # file.close()
         conf['render'] = render
         exp = ParticleGame(conf)
         exp = ParticleSimEnv(exp, settings)
@@ -488,13 +459,8 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from gym import wrappers
         from gym import envs
         from sim.OpenAIGymEnv import OpenAIGymEnv
-        # print(envs.registry.all())
-        
-        # env = gym.make('CartPole-v0')
         env_name = config_file
         env = gym.make(env_name)
-        # file = open(config_file)
-        # conf = json.load(file)
         
         conf = copy.deepcopy(settings)
         conf['render'] = render
@@ -532,9 +498,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.TerrainRLEnv import TerrainRLEnv
         sim = terrainRLAdapter.cSimAdapter(['train', '-arg_file=', terrainRL_PATH+'/'+config_file, '-relative_file_path=', terrainRL_PATH+'/'])
         sim.setRender(render)
-        # sim.init(['train', '-arg_file=', config_file])
-        # print ("Num state: ", c._NUMBER_OF_STATES)
-        # sim = simbiconAdapter.SimbiconWrapper(c)
         print ("Using Environment Type: " + str(env_type))
         exp = TerrainRLEnv(sim, settings)
         # exp._conf = c # OMFG HACK so that python does not garbage collect the configuration and F everything up!
@@ -546,9 +509,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.TerrainRLFlatEnv import TerrainRLFlatEnv
         sim = terrainRLAdapter.cSimAdapter(['train', '-arg_file=', terrainRL_PATH+'/'+config_file, '-relative_file_path=', terrainRL_PATH+'/'])
         sim.setRender(render)
-        # sim.init(['train', '-arg_file=', config_file])
-        # print ("Num state: ", c._NUMBER_OF_STATES)
-        # sim = simbiconAdapter.SimbiconWrapper(c)
         print ("Using Environment Type: " + str(env_type))
         exp = TerrainRLFlatEnv(sim, settings)
         # exp._conf = c # OMFG HACK so that python does not garbage collect the configuration and F everything up!
@@ -560,9 +520,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.TerrainRLImitateEnv import TerrainRLImitateEnv
         sim = terrainRLAdapter.cSimAdapter(['train', '-arg_file=', terrainRL_PATH+'/'+config_file, '-relative_file_path=', terrainRL_PATH+'/'])
         sim.setRender(render)
-        # sim.init(['train', '-arg_file=', config_file])
-        # print ("Num state: ", c._NUMBER_OF_STATES)
-        # sim = simbiconAdapter.SimbiconWrapper(c)
         print ("Using Environment Type: " + str(env_type))
         exp = TerrainRLImitateEnv(sim, settings)
         # exp._conf = c # OMFG HACK so that python does not garbage collect the configuration and F everything up!
@@ -574,9 +531,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
         from sim.TerrainRLHLCEnv import TerrainRLHLCEnv
         sim = terrainRLAdapter.cSimAdapter(['train', '-arg_file=', terrainRL_PATH+'/'+config_file, '-relative_file_path=', terrainRL_PATH+'/'])
         sim.setRender(render)
-        # sim.init(['train', '-arg_file=', config_file])
-        # print ("Num state: ", c._NUMBER_OF_STATES)
-        # sim = simbiconAdapter.SimbiconWrapper(c)
         print ("Using Environment Type: " + str(env_type))
         exp = TerrainRLHLCEnv(sim, settings)
         # exp._conf = c # OMFG HACK so that python does not garbage collect the configuration and F everything up!
@@ -584,10 +538,8 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
     
     import characterSim
     c = characterSim.Configuration(config_file)
-    # print ("Num state: ", c._NUMBER_OF_STATES)
     c._RENDER = render
     exp = characterSim.Experiment(c)
-    # print ("Num state: ", exp._config._NUMBER_OF_STATES)
     if env_type == 'pendulum_env_state':
         from sim.PendulumEnvState import PendulumEnvState
         print ("Using Environment Type: " + str(env_type))
@@ -611,7 +563,6 @@ def createEnvironment(config_file, env_type, settings, render=False, index=None)
     else:
         print ("Invalid environment type: " + str(env_type))
         raise ValueError("Invalid environment type: " + str(env_type))
-        # sys.exit()
     
     exp._conf = c # OMFG HACK so that python does not garbage collect the configuration and F everything up!    
     return exp
@@ -749,7 +700,6 @@ def createForwardDynamicsModel(settings, state_bounds, action_bounds, actor, exp
     else:
         print ("Unrecognized forward dynamics method: " + str(settings["forward_dynamics_predictor"]))
         raise ValueError("Unrecognized forward dynamics method: " + str(settings["forward_dynamics_predictor"]))
-        # sys.exit()
         
     return forwardDynamicsModel
 
@@ -799,7 +749,6 @@ def createForwardDynamicsNetwork(state_bounds, action_bounds, settings):
             
     else:
         from model.ModelInterface import ModelInterface
-        # modelClass = my_import(path_)
         modelClass = locate(settings["forward_dynamics_model_type"])
         if ( issubclass(modelClass, ModelInterface)): ## Double check this load will work
             model = modelClass(len(state_bounds[0]), len(action_bounds[0]), 

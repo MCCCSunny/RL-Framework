@@ -55,9 +55,6 @@ class SimWorker(Process):
         # from pympler import muppy
         np.random.seed(self._process_random_seed)
         import os
-        
-        # print ("SW model: ", self._model.getPolicy())
-        # print ("Thread: ", self._model._exp)
         ## This is no needed if there is one thread only...
         if (int(self._settings["num_available_threads"]) > 1): 
             from util.SimulationUtil import createEnvironment
@@ -77,17 +74,7 @@ class SimWorker(Process):
         if message == "Update_Policy":
             print ("First Message: ", message)
             data = episodeData['data']
-            """
-            poli_params = []
-            for i in range(len(data[5])):
-                print ("poli params", data[5][i])
-                net_params=[]
-                for j in range(len(data[5][i])):
-                    net_params.append(np.array(data[5][i][j], dtype='float32'))
-                poli_params.append(net_params)
-                """
             self._model.getPolicy().setNetworkParameters(data[5])
-            # print ("First Message: ", "Updated policy parameters")
             if (self._settings['train_forward_dynamics']):
                 self._model.getForwardDynamics().setNetworkParameters(data[6])
             self._p = data[1]
@@ -96,14 +83,12 @@ class SimWorker(Process):
             self._model.setRewardBounds(data[4])
             print ("Sim worker:", os.getpid(), " State Bounds: ", self._model.getStateBounds())
             print ("Initial policy ready:")
-            # print ("sim worker p: " + str(self._p))
         print ('Worker: started')
         # do some initialization here
         while True:
             eval=False
             sim_on_poli = False
             bootstrapping = False
-            # print ("Worker: getting data")
             if (self._settings['on_policy']):
                 episodeData = self._message_queue.get()
                 if episodeData == None:
@@ -113,7 +98,6 @@ class SimWorker(Process):
                     if (self._settings["print_levels"][self._settings["print_level"]] >= self._settings["print_levels"]['train']):
                         print ("Message: ", message)
                     data = episodeData['data']
-                    # print ("New model parameters: ", data[2][1][0])
                     ### Update scaling parameters
                     self._model.setStateBounds(data[2])
                     self._model.setActionBounds(data[3])
@@ -143,9 +127,6 @@ class SimWorker(Process):
                     bootstrapping = True
                 else:
                     episodeData = episodeData['data']
-                # print("self._p: ", self._p)
-                # print ("Worker: Evaluating episode")
-                # print ("Nums samples in worker: ", self._namespace.experience.samples())
                 if (eval): ## No action exploration
                     out = self.simEpochParallel(actor=self._actor, exp=self._exp, model=self._model, discount_factor=self._discount_factor, 
                             anchors=episodeData, action_space_continuous=self._action_space_continuous, settings=self._settings, 
@@ -164,13 +145,8 @@ class SimWorker(Process):
                             anchors=episodeData, action_space_continuous=self._action_space_continuous, settings=self._settings, 
                             print_data=self._print_data, p=self._p, validation=self._validation, evaluation=eval)
                 self._iteration += 1
-                # if self._p <= 0.0:
-                
-                #    self._output_queue.put(out)
                 (tuples, discounted_sum, q_value, evalData) = out
-                # (states, actions, result_states, rewards, falls) = tuples
                 ## Hack for now just update after ever episode
-                # print ("Worker: send sim results: ")
                 if (eval or sim_on_poli or bootstrapping):
                     self._eval_episode_data_queue.put(out)
                 else:
@@ -178,7 +154,6 @@ class SimWorker(Process):
             else: ## off policy, all threads sharing the same queue
                 episodeData = self._input_queue.get()
                 ## Check if any messages in the queue
-                # print ("Worker: got data", episodeData)
                 if episodeData == None:
                     print ("Terminating worker: " , os.getpid(), " Size of state input Queue: " + str(self._input_queue.qsize()))
                     break
@@ -192,9 +167,6 @@ class SimWorker(Process):
                     bootstrapping = True
                 else:
                     episodeData = episodeData['data']
-                # print("self._p: ", self._p)
-                # print ("Worker: Evaluating episode")
-                # print ("Nums samples in worker: ", self._namespace.experience.samples())
                 if (eval): ## No action exploration
                     out = self.simEpochParallel(actor=self._actor, exp=self._exp, model=self._model, discount_factor=self._discount_factor, 
                             anchors=episodeData, action_space_continuous=self._action_space_continuous, settings=self._settings, 
@@ -213,13 +185,8 @@ class SimWorker(Process):
                             anchors=episodeData, action_space_continuous=self._action_space_continuous, settings=self._settings, 
                             print_data=self._print_data, p=self._p, validation=self._validation, evaluation=eval)
                 self._iteration += 1
-                # if self._p <= 0.0:
-                
-                #    self._output_queue.put(out)
                 (tuples, discounted_sum, q_value, evalData) = out
-                # (states, actions, result_states, rewards, falls) = tuples
                 ## Hack for now just update after ever episode
-                # print ("Worker: send sim results: ")
                 if (eval or sim_on_poli or bootstrapping):
                     # print ("Putting episode data in queue")
                     self._eval_episode_data_queue.put(out)
@@ -229,33 +196,23 @@ class SimWorker(Process):
                 ### Pull updated network parameters
                 if self._message_queue.qsize() > 0:
                     data = None
-                    # print ("Getting updated network parameters:")
                     while (not self._message_queue.empty()):
                         ## Don't block
                         try:
                             data_ = self._message_queue.get(False)
                         except Exception as inst:
-                            # print ("SimWorker model parameter message queue empty.")
                             pass
                         if (not (data_ is None)):
                             episodeData = data_
-                    # print ("Got updated network parameters:")
-                    # print("episodeData: ", episodeData)
                     if (episodeData != None and (isinstance(episodeData,dict))):
-                        # message = episodeData[0]## Check if any messages in the queue
                         message = episodeData['type']
                         if message == "Update_Policy":
                             data = episodeData['data']
                             if (self._settings["print_levels"][self._settings["print_level"]] >= self._settings["print_levels"]['train']):
                                 print ("Message: ", message)
-                            # print ("New model parameters: ", data[2][1][0])
                             self._model.setStateBounds(data[2])
                             self._model.setActionBounds(data[3])
                             self._model.setRewardBounds(data[4])
-                            # if (self._settings["print_levels"][self._settings["print_level"]] >= self._settings["print_levels"]['train']):
-                                # print("Scaling State params: ", self._model.getStateBounds())
-                                # print("Scaling Action params: ", self._model.getActionBounds())
-                                # print("Scaling Reward params: ", self._model.getRewardBounds())
                             self._model.getPolicy().setNetworkParameters(data[5])
                             if (self._settings['train_forward_dynamics']):
                                 self._model.getForwardDynamics().setNetworkParameters(data[6])
@@ -264,11 +221,7 @@ class SimWorker(Process):
                             if (self._settings["print_levels"][self._settings["print_level"]] >= self._settings["print_levels"]['train']):
                                 print ("Sim worker:", os.getpid(), " Size of state input Queue: " + str(self._input_queue.qsize()))
                                 print('\tWorker maximum memory usage: %.2f (mb)' % (self.current_mem_usage()))
-                    
-                # print ("Actions: " + str(actions))
-                # all_objects = muppy.get_objects()
-                # sum1 = summary.summarize(all_objects)
-                # summary.print_(sum1)
+
         print ("Simulation Worker Complete: ", os.getpid())
         self._exp.finish()
         return
@@ -305,7 +258,6 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
     ## If tuples should be put in the output_exp_queue in batches which will include proper values for calculated future discounted rewards.
     use_batched_exp=settings['collect_tuples_in_batches']
     pa=None
-    # epsilon = settings["epsilon"]
     # Actor should be FIRST here
     exp.getActor().initEpoch()
     if validation:
@@ -313,11 +265,8 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
     else:
         exp.generateEnvironmentSample()
         
-    # exp.initEpoch()
     exp.initEpoch()
-    # print ("sim EXP: ", exp)
     actor.initEpoch()
-    # model.initEpoch(exp)
     state_ = exp.getState()
     # pa = model.predict(state_)
     if (not bootstrapping):
@@ -325,10 +274,6 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
     else:
         q_values_ = []
     viz_q_values_ = []
-    # q_value = model.q_value(state_)
-    # print ("Updated parameters: " + str(model.getNetworkParameters()[1]))
-    # print ("q_values_: " + str(q_value) + " Action: " + str(action_))
-    # original_val = q_value
     discounted_sum = 0
     discounted_sums = []
     G_t = []
@@ -350,13 +295,9 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
     evalDatas=[]
     stds=[]
     bad_sim_state = False
-    
-    # while not exp.endOfEpoch():
+
     i_ = 0
     while (i_ < settings['max_epoch_length']):
-        
-        # if (exp.endOfEpoch() or (reward_ < settings['reward_lower_bound'])):
-        # state = exp.getState()
         state_ = exp.getState()
         if (checkDataIsValid(state_) == True): ## Lets not wait to simulate an entire action to find out the simulation has gone haywire..
     
@@ -364,19 +305,8 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                 viz_q_values_.append(model.q_value(state_)[0])
                 if (len(viz_q_values_)>30):
                      viz_q_values_.pop(0)
-                # print ("viz_q_values_: ", viz_q_values_ )
-                # print ("np.zeros(len(viz_q_values_)): ", np.zeros(len(viz_q_values_)))
                 visualizeEvaluation.updateLoss(viz_q_values_, np.zeros(len(viz_q_values_)))
                 visualizeEvaluation.redraw()
-                # visualizeEvaluation.setInteractiveOff()
-                # visualizeEvaluation.saveVisual(directory+"criticLossGraph")
-                # visualizeEvaluation.setInteractive()
-            # print ("Initial State: " + str(state_))
-            # print ("State: " + str(state.getParams()))
-            # val_act = exp.getActor().getModel().maxExpectedActionForState(state)
-            # action_ = model.predict(state_)
-                # print ("Get best action: ")
-            # pa = model.predict(state_)
             action=None
             if action_space_continuous:
                 """
@@ -388,28 +318,20 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                     0 <= e < omega < 1.0
                 """
                 r = np.random.rand(1)[0]
-                # print(" Action p: ", p)
                 if r < (epsilon * p) or (settings['on_policy']): # explore random actions
                     exp_action = int(1)
                     r2 = np.random.rand(1)[0]
                     if ((r2 < (omega * p))) and (not sampling) :# explore hand crafted actions
-                        # return ra2
-                        # randomAction = randomUniformExporation(action_bounds) # Completely random action
-                        # action = randomAction
                         action = np.random.choice(action_selection)
                         action__ = actor.getActionParams(action)
                         action = action__
-                        # print ("Discrete action choice: ", action, " epsilon * p: ", epsilon * p)
                     else : # add noise to current policy
                         # return ra1
                         if ( ((settings['exploration_method'] == 'gaussian_random') 
                               # or (bootstrapping)
                               ) 
                              and (not sampling)):
-                            # print ("Random Guassian sample, state bounds", model.getStateBounds())
                             pa = model.predict(state_, p=p, sim_index=worker_id, bootstrapping=bootstrapping)
-                            # print ("Exploration Action: ", pa)
-                            # action = randomExporation(settings["exploration_rate"], pa)
                             if ( 'anneal_policy_std' in settings and (settings['anneal_policy_std'])):
                                 action = randomExporation(settings["exploration_rate"] * p, pa, action_bounds)
                             else:
@@ -417,20 +339,14 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                         elif (settings['exploration_method'] == 'gaussian_network' or 
                               (settings['use_stocastic_policy'] == True)):
                             pa_ = model.predict(state_, p=p, sim_index=worker_id, bootstrapping=bootstrapping)
-                            # action = randomExporation(settings["exploration_rate"], pa)
                             std_ = model.predict_std(state_)
                             if ( 'anneal_policy_std' in settings and (settings['anneal_policy_std'])):
                                 std_ = std_ * p
-                            # print("Action: ", pa)
-                            # print ("Action std: ", std)
                             stds.append(std_)
                             action = randomExporationSTD(settings["exploration_rate"], pa_, std_, action_bounds)
-                            # print("Action2: ", action)
                         elif ((settings['exploration_method'] == 'thompson')):
-                            # print ('Using Thompson sampling')
                             action = thompsonExploration(model, settings["exploration_rate"], state_)
                         elif ((settings['exploration_method'] == 'sampling')):
-                            ## Use a sampling method to find a good action
                             sim_state_ = exp.getSimState()
                             action = model.getSampler().predict(sim_state_, p=p, sim_index=worker_id, bootstrapping=bootstrapping)
                         else:
@@ -494,20 +410,10 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                 if (not settings["train_actor"]): # hack to use debug critic only
                     pass
                 reward_ = actor.actContinuous(exp,action)
-                """
-                if ( settings['train_reward_predictor'] and (not bootstrapping)):
-                    predicted_reward = model.getForwardDynamics().predict_reward(state_, [action])
-                    print ("Actual Reward: ", reward_, " Predicted reward: ", predicted_reward)
-                """
                 agent_not_fell = actor.hasNotFallen(exp)
                 if (outside_bounds and settings['penalize_actions_outside_bounds']):
                     reward_ = reward_ + settings['reward_lower_bound'] # TODO: this penalty should really be a function of the distance the action was outside the bounds 
             elif not action_space_continuous:
-                """
-                action = random.choice(action_selection)
-                action = eGreedy(pa, action, epsilon * p)
-                reward_ = actor.act(exp, action)
-                """
                 pa = model.predict(state_)
                 action = random.choice(action_selection)
                 action = eGreedy(pa, action, epsilon * p)               
@@ -570,7 +476,6 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                 path['states'] = copy.deepcopy(states[last_epoch_end:])
                 path['reward'] = np.array(rewards[last_epoch_end:])
                 path["terminated"] = False
-                # print("rewards: ", rewards[last_epoch_end:])
                 ## Extend so that we can preserve the paths/trajectory structure.
                 if (len(rewards[last_epoch_end:]) > 0):
                     advantage.extend(compute_advantage_(model, [path], discount_factor, settings['GAE_lambda']))
@@ -1063,9 +968,7 @@ def modelEvaluationParallel(settings_file_name):
     masterAgent = LearningAgent(n_in=len(state_bounds[0]), n_out=len(action_bounds[0]), state_bounds=state_bounds, 
                               action_bounds=action_bounds, reward_bound=reward_bounds, settings_=settings)
     
-    # c = characterSim.Configuration("../data/epsilon0Config.ini")
     file_name=directory+getAgentName()+"_Best.pkl"
-    # file_name=directory+getAgentName()+".pkl"
     f = open(file_name, 'r')
     model = dill.load(f)
     f.close()
@@ -1116,8 +1019,6 @@ def modelEvaluationParallel(settings_file_name):
         agent.setSettings(settings)
         w = SimWorker(namespace, input_anchor_queue, output_experience_queue, actor, exp_, agent, discount_factor, action_space_continuous=action_space_continuous, 
                 settings=settings, print_data=False, p=0.0, validation=True, eval_episode_data_queue=eval_episode_data_queue, process_random_seed=settings['random_seed']+process )
-        # w.start()
-        # w._settings['shouldRender']=True
         sim_workers.append(w)
         
     if (int(settings["num_available_threads"]) != 1): # This is okay if there is one thread only...
@@ -1199,19 +1100,14 @@ def modelEvaluation(settings_file_name, runLastModel=False, settings=None):
     # from model.ModelUtil import *
     # from actor.ActorInterface import *
     # from util.SimulationUtil import *
-    
-    # anchor_data_file = open(settings["anchor_file"])
-    # _anchors = getAnchors(anchor_data_file)
-    # anchor_data_file.close()
+
     settings['shouldRender'] = True 
     model_type= settings["model_type"]
     directory= getDataDirectory(settings)
     rounds = settings["rounds"]
     epochs = settings["epochs"]
-    # num_states=settings["num_states"]
     epsilon = settings["epsilon"]
     discount_factor=settings["discount_factor"]
-    # max_reward=settings["max_reward"]
     batch_size=settings["batch_size"]
     state_bounds = np.array(settings['state_bounds'])
     action_space_continuous=settings["action_space_continuous"]  
@@ -1229,7 +1125,6 @@ def modelEvaluation(settings_file_name, runLastModel=False, settings=None):
         experience = ExperienceMemory(len(state_bounds[0]), len(action_bounds[0]), settings['expereince_length'], continuous_actions=True, settings=settings)
     else:
         experience = ExperienceMemory(len(state_bounds[0]), 1, settings['expereince_length'])
-    # actor = ActorInterface(discrete_actions)
     actor = createActor(str(settings['environment_type']),settings, experience)
     
     sim_index=0
@@ -1242,15 +1137,12 @@ def modelEvaluation(settings_file_name, runLastModel=False, settings=None):
         ## This should be some kind of copy of the simulator not a network
         forwardDynamicsModel = createForwardDynamicsModel(settings, state_bounds, action_bounds, actor, exp)
         sampler.setForwardDynamics(forwardDynamicsModel)
-        # sampler.setPolicy(model)
         masterAgent = sampler
         print ("thread together exp: ", masterAgent._exp)
-        # sys.exit()
     else:
         masterAgent = LearningAgent(n_in=len(state_bounds[0]), n_out=len(action_bounds[0]), state_bounds=state_bounds, 
                                   action_bounds=action_bounds, reward_bound=reward_bounds, settings_=settings)
     
-    # c = characterSim.Configuration("../data/epsilon0Config.ini")
     if (runLastModel == True):
         file_name=directory+getAgentName()+".pkl"
     else:
@@ -1279,8 +1171,6 @@ def modelEvaluation(settings_file_name, runLastModel=False, settings=None):
         # copy the task part from taskModel to model
         print ("Transferring task portion of model.")
         model.setTaskNetworkParameters(taskModel)
-
-    
 
     if (settings['train_forward_dynamics']):
         forwardDynamicsModel.setActor(actor)

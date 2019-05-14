@@ -351,7 +351,7 @@ class LearningWorker(Process):
                 self._agent._expBuff.insertTuple(tmp)
                 if ( 'keep_seperate_fd_exp_buffer' in self._agent._settings and (self._agent._settings['keep_seperate_fd_exp_buffer'])):
                     self._agent._expBuff_FD.insertTuple(tmp)
-           else:
+            else:
                 self._agent._expBuff.insertTuple(tmp)
                 if ( 'keep_seperate_fd_exp_buffer' in self._agent._settings and (self._agent._settings['keep_seperate_fd_exp_buffer'])):
                     self._agent._expBuff_FD.insertTuple(tmp)

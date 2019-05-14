@@ -31,7 +31,7 @@ import numpy
 
 import theano
 import theano.tensor as T
-from theano.tensor.signal import downsample
+from theano.tensor.signal.pool import pool_2d
 from theano.tensor.nnet import conv
 
 from logistic_sgd import LogisticRegression, load_data
@@ -90,7 +90,7 @@ class LeNetConvPoolLayer(object):
                 filter_shape=filter_shape, image_shape=image_shape)
 
         # downsample each feature map individually, using maxpooling
-        pooled_out = downsample.max_pool_2d(input=conv_out,
+        pooled_out = pool_2d(input=conv_out,
                                             ds=poolsize, ignore_border=True)
 
         # add the bias term. Since the bias is a vector (1D array), we first

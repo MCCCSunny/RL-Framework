@@ -11,8 +11,12 @@ from model.ModelUtil import *
 from algorithm.AlgorithmInterface import AlgorithmInterface
 from model.LearningUtil import loglikelihood, kl, entropy, change_penalty
 from util.SimulationUtil import getAgentName
-
+import pdb
 class Distillation(AlgorithmInterface):
+    '''
+    self._model: original model
+    self._modelTarget:要更新的模型
+    '''
     
     def __init__(self, model, n_in, n_out, state_bounds, action_bounds, reward_bound, settings_):
 
@@ -33,7 +37,7 @@ class Distillation(AlgorithmInterface):
                 f = open(file_name, 'rb')
                 model_ = dill.load(f)
                 f.close()
-                self._expert_policies.append(model_) # expert model
+                self._expert_policies.append(model_) # expert model, load the 2 expert models 
             file_name_ = file_name
             
         self._actor_buffer_states=[]
@@ -56,23 +60,23 @@ class Distillation(AlgorithmInterface):
         
         self._tmp_diff_shared = theano.shared(
             np.zeros((self._batch_size, 1), dtype=self.getSettings()['float_type']),
-            broadcastable=(False, True))
+            broadcastable=(False, True)) #定义一个共享变量，初始值为为0
 
         self._critic_regularization_weight = self.getSettings()["critic_regularization_weight"]
         self._critic_learning_rate = self.getSettings()["critic_learning_rate"]
         ## Target network
-        self._modelTarget = copy.deepcopy(model)
+        self._modelTarget = copy.deepcopy(model)# target model 是要更新的模型
         
-        self._q_valsA = lasagne.layers.get_output(self._model.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=True)
-        self._q_valsA_drop = lasagne.layers.get_output(self._model.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=False)
-        self._q_valsNextState = lasagne.layers.get_output(self._model.getCriticNetwork(), self._model.getResultStateSymbolicVariable(), deterministic=True)
-        self._q_valsTargetNextState = lasagne.layers.get_output(self._modelTarget.getCriticNetwork(), self._model.getResultStateSymbolicVariable(), deterministic=True)
-        self._q_valsTarget = lasagne.layers.get_output(self._modelTarget.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=True)
-        self._q_valsTarget_drop = lasagne.layers.get_output(self._modelTarget.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=False)
+        self._q_valsA = lasagne.layers.get_output(self._model.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=True) #确定性原始模型的state值输出
+        self._q_valsA_drop = lasagne.layers.get_output(self._model.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=False) #非确定的state值输出
+        self._q_valsNextState = lasagne.layers.get_output(self._model.getCriticNetwork(), self._model.getResultStateSymbolicVariable(), deterministic=True) #下一步的state值
+        self._q_valsTargetNextState = lasagne.layers.get_output(self._modelTarget.getCriticNetwork(), self._model.getResultStateSymbolicVariable(), deterministic=True) #目标模型的下一步的state值
+        self._q_valsTarget = lasagne.layers.get_output(self._modelTarget.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=True) #目标模型的state值
+        self._q_valsTarget_drop = lasagne.layers.get_output(self._modelTarget.getCriticNetwork(), self._model.getStateSymbolicVariable(), deterministic=False) #目标模型的state
         
         self._q_valsActA = lasagne.layers.get_output(self._model.getActorNetwork(), self._model.getStateSymbolicVariable(), deterministic=True)
         self._q_valsActTarget = lasagne.layers.get_output(self._modelTarget.getActorNetwork(), self._model.getStateSymbolicVariable(), deterministic=True) #remove the random 
-        self._q_valsActA_drop = lasagne.layers.get_output(self._model.getActorNetwork(), self._model.getStateSymbolicVariable(), deterministic=False)
+        self._q_valsActA_drop = lasagne.layers.get_output(self._model.getActorNetwork(), self._model.getStateSymbolicVariable(), deterministic=False) #actor 值
         
         self._q_func = self._q_valsA
         self._q_funcTarget = self._q_valsTarget
@@ -81,11 +85,12 @@ class Distillation(AlgorithmInterface):
         self._q_funcAct = self._q_valsActA
         self._q_funcAct_drop = self._q_valsActA_drop
         
-        self._target = self._model.getRewardSymbolicVariable() + (self._discount_factor * self._q_valsTargetNextState ) 
+        self._target = self._model.getRewardSymbolicVariable() + (self._discount_factor * self._q_valsTargetNextState) 
+        # self._model.getRewardSymbolicVariable() 获取rewards的值getRewards() =self._rewards_shared 从0开始一直更新
         self._diff = self._target - self._q_func
-        self._diff_drop = self._target - self._q_func_drop 
-        loss = T.pow(self._diff, 2)
-        self._loss = T.mean(loss)
+        self._diff_drop = self._target - self._q_func_drop #更新的模型的reward减去原始模型的critic的输出值
+        loss = T.pow(self._diff, 2) 
+        self._loss = T.mean(loss) # 两个模型的reward的差值
         self._loss_drop = T.mean(0.5 * self._diff_drop ** 2)
         
         self._params = lasagne.layers.helper.get_all_params(self._model.getCriticNetwork())
@@ -116,11 +121,6 @@ class Distillation(AlgorithmInterface):
         # SGD update
         self._value_grad = T.grad(self._loss + self._critic_regularization
                                                      , self._params)
-        ## Clipping the max gradient
-        """
-        for x in range(len(self._value_grad)): 
-            self._value_grad[x] = T.clip(self._value_grad[x] ,  -0.1, 0.1)
-        """
         if (self.getSettings()['optimizer'] == 'rmsprop'):
             print ("Optimizing Value Function with ", self.getSettings()['optimizer'], " method")
             self._updates_ = lasagne.updates.rmsprop(self._value_grad, self._params, self._learning_rate, self._rho,
@@ -143,7 +143,7 @@ class Distillation(AlgorithmInterface):
         ## TD update
 
         ## Need to perform an element wise operation or replicate _diff for this to work properly.
-        self._actDiff = (self._model.getActionSymbolicVariable() - self._q_valsActA_drop)
+        self._actDiff = (self._model.getActionSymbolicVariable() - self._q_valsActA_drop)  # 更新模型的actor的输出减去原始模型的actor值
                                                                                 
         self._actLoss_ = theano.tensor.elemwise.Elemwise(theano.scalar.mul)((T.mean(T.pow(self._actDiff, 2),axis=1)), 
                                                                                 (self._tmp_diff))
@@ -166,10 +166,7 @@ class Distillation(AlgorithmInterface):
             print ("Unknown optimization method: ", self.getSettings()['optimizer'])
             
         self._givens_grad = {self._model.getStateSymbolicVariable(): self._model.getStates()}
-        
-        ### Noisey state updates
-        # self._target = (self._model.getRewardSymbolicVariable() + (np.array([self._discount_factor] ,dtype=np.dtype(self.getSettings()['float_type']))[0] * self._q_valsTargetNextState )) * self._NotFallen
-        # self._target_dyna = theano.gradient.disconnected_grad(self._q_func)
+
                
         ## Bellman error
         self._bellman = self._target - self._q_funcTarget
@@ -270,6 +267,8 @@ class Distillation(AlgorithmInterface):
 
         
     def trainCritic(self, states, actions, rewards, result_states, falls):
+        print (falls,'-------------------------------------------------')
+        pdb.set_trace()
         self.setData(states, actions, rewards, result_states, falls)
         if (( self._updates % self._weight_update_steps) == 0):
             self.updateTargetModel()
@@ -283,10 +282,12 @@ class Distillation(AlgorithmInterface):
     
     def trainActor(self, states, actions, rewards, result_states, falls, advantage, exp_actions=None, forwardDynamicsModel=None):
         lossActor = 0
-        
+        print (falls,'-------------------------------------------------')
+        pdb.set_trace()
         ### Update actions to expert actions. Some were selected from current policy
 
-        if ('run_distillation_in_test_mode' in self.getSettings() and (self.getSettings()['run_distillation_in_test_mode'])):
+        if ('run_distillation_in_test_mode' in self.getSettings() and (self.getSettings()['run_distillation_in_test_mode'])): 
+            #in the test mode, the agent so not use the distill
             pass
         else:        
             actions_ = []
@@ -299,8 +300,9 @@ class Distillation(AlgorithmInterface):
                 action_ = norm_state(action_, self.getActionBounds())
                 actions_.append(action_)
             actions_ = np.array(actions_, dtype=self.getSettings()['float_type'])
-        actions = actions_ #expert actions
-        
+        actions = actions_ #2 experts's actions
+        # here, the state is the input value, and the action is the 2 experts' actions, 
+        # 也就是，expert只提供了action值，其他的还是采用原来的
         for i in range(states.shape[0]): ### Put data in buffer 
             self._actor_buffer_diff.append([1.0])
             self._actor_buffer_states.append(states[i])
@@ -359,10 +361,13 @@ class Distillation(AlgorithmInterface):
             loss: the loss for the DYNA type update
 
         """
-        
+        print (falls,'-------------------------------------------------')
+        pdb.set_trace()
         return 0
     
     def train(self, states, actions, rewards, result_states, falls):
+        print (falls,'-------------------------------------------------')
+        pdb.set_trace()
         loss = self.trainCritic(states, actions, rewards, result_states, falls)
         lossActor = self.trainActor(states, actions, rewards, result_states, falls)
         return loss

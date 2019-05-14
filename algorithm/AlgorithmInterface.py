@@ -30,20 +30,6 @@ class AlgorithmInterface(object):
         self.setStateBounds(state_bounds) 
         self.setRewardBounds(reward_bound) 
         
-        # data types for model
-        
-        """
-        State = T.dmatrix("State")
-        State.tag.test_value = np.random.rand(batch_size,self._state_length)
-        ResultState = T.dmatrix("ResultState")
-        ResultState.tag.test_value = np.random.rand(batch_size,self._state_length)
-        Reward = T.col("Reward")
-        Reward.tag.test_value = np.random.rand(batch_size,1)
-        Action = T.dmatrix("Action")
-        Action.tag.test_value = np.random.rand(batch_size, self._action_length)
-        """
-        # create a small convolutional neural network
-        
         self._learning_rate = self.getSettings()['learning_rate']
         self._discount_factor= self.getSettings()['discount_factor']
         self._rho = self.getSettings()['rho']
@@ -79,10 +65,6 @@ class AlgorithmInterface(object):
         return params
     
     def setNetworkParameters(self, params):
-        """
-        for i in range(len(params[0])):
-            params[0][i] = np.array(params[0][i], dtype=self._settings['float_type'])
-            """
         lasagne.layers.helper.set_all_param_values(self._model.getCriticNetwork(), params[0])
         lasagne.layers.helper.set_all_param_values(self._model.getActorNetwork(), params[1])
         lasagne.layers.helper.set_all_param_values(self._modelTarget.getCriticNetwork(), params[2])
@@ -167,13 +149,6 @@ class AlgorithmInterface(object):
                 # values = np.zeros(self_Layers[0].W.get_value().shape, dtype=self.getSettings()['float_type'])
                 ### Similar to what is done in DDPG to get i
                 values = self_Layers[0].W.get_value() * 0.01
-                ### also zero the dense network from the task part
-                """
-                if (zero_dense):
-                    l = self.getModel().getCriticNetworkTaskPart()
-                    values_2 = np.zeros(l.W.get_value().shape, dtype=self.getSettings()['float_type'])
-                    l.W.set_value(values_2)
-                """
             else:
                 values = self_Layers[0].W.get_value()
             ### copy over other values
@@ -184,7 +159,6 @@ class AlgorithmInterface(object):
                    self_shape[1]-other_shape[1]:self_shape[1]] = other_Layers[0].W.get_value()
             ### Update current net params
             other_Layers[0].W.set_value(values)
-        # lasagne.layers.helper.set_all_param_values(self_Layers, all_paramsM)
         self.copyLayerParameters(self_Layers, other_Layers)
         
         other_Layers = otherModel.getModelTarget().getCriticNetworkMergeLayers()
@@ -193,7 +167,6 @@ class AlgorithmInterface(object):
         print (" merge params: ", len(other_Layers))
         for i_ in range(len(other_Layers)):
             print ("merge params ", i_, ": ", other_Layers[i_].W.get_value().shape)
-        # print ("params: ", all_paramsA)
         print (self_Layers)
         if (self_Layers[0].W.get_value().shape == other_Layers[0].W.get_value().shape ):
             print("Matching merge layer shapes ")
@@ -203,16 +176,8 @@ class AlgorithmInterface(object):
             print (self_Layers[0].W.get_value().shape, " vs ", other_Layers[0].W.get_value().shape)
             if ( zeroInjectedMergeLayer ):
                 print ("Zeroing injected merge part")
-                # values = np.zeros(self_Layers[0].W.get_value().shape, dtype=self.getSettings()['float_type'])
                 ### Similar to what is done in DDPG to get initial policy to be close to the mean.
                 values = self_Layers[0].W.get_value() * 0.01
-                ### also zero the dense network from the task part
-                """
-                if (zero_dense):
-                    l = self.getModel().getCriticNetworkTaskPart()
-                    values_2 = np.zeros(l.W.get_value().shape, dtype=self.getSettings()['float_type'])
-                    l.W.set_value(values_2)
-                """
             else:
                 values = self_Layers[0].W.get_value()
             ### copy over other values
@@ -223,7 +188,6 @@ class AlgorithmInterface(object):
                    self_shape[1]-other_shape[1]:self_shape[1]] = other_Layers[0].W.get_value()
             ### Update current net params
             other_Layers[0].W.set_value(values)
-        # lasagne.layers.helper.set_all_param_values(self_Layers, all_paramsM)
         self.copyLayerParameters(self_Layers, other_Layers)
         
         ### Now for the possibly different shaped actor
@@ -232,7 +196,6 @@ class AlgorithmInterface(object):
         print ("Actor merge params: ", len(other_Layers))
         for i_ in range(len(other_Layers)):
             print ("Actor merge params ", i_, ": ", other_Layers[i_].W.get_value().shape)
-        # print ("params: ", all_paramsA)
         print (self_Layers)
         if (self_Layers[0].W.get_value().shape == other_Layers[0].W.get_value().shape ):
             print("Matching merge layer shapes ")
@@ -242,16 +205,9 @@ class AlgorithmInterface(object):
             print (self_Layers[0].W.get_value().shape, " vs ", other_Layers[0].W.get_value().shape)
             if ( zeroInjectedMergeLayer ):
                 print ("Zeroing injected merge part")
-                # values = np.zeros(self_Layers[0].W.get_value().shape, dtype=self.getSettings()['float_type'])
                 ### Similar to what is done in DDPG to get initial policy to be close to the mean.
                 values = self_Layers[0].W.get_value() * 0.01
                 ### also zero the dense network from the task part
-                """
-                if (zero_dense):
-                    l = self.getModel().getActorNetworkTaskPart()
-                    values_2 = np.zeros(l.W.get_value().shape, dtype=self.getSettings()['float_type'])
-                    l.W.set_value(values_2)
-                """
             else:
                 values = self_Layers[0].W.get_value()
             ### copy over other values
@@ -272,7 +228,6 @@ class AlgorithmInterface(object):
         print ("Actor merge params: ", len(other_Layers))
         for i_ in range(len(other_Layers)):
             print ("Actor merge params ", i_, ": ", other_Layers[i_].W.get_value().shape)
-        # print ("params: ", all_paramsA)
         print (self_Layers)
         if (self_Layers[0].W.get_value().shape == other_Layers[0].W.get_value().shape ):
             print("Matching merge layer shapes ")
@@ -282,19 +237,10 @@ class AlgorithmInterface(object):
             print (self_Layers[0].W.get_value().shape, " vs ", other_Layers[0].W.get_value().shape)
             if ( zeroInjectedMergeLayer ):
                 print ("Zeroing injected merge part")
-                # values = np.zeros(self_Layers[0].W.get_value().shape, dtype=self.getSettings()['float_type'])
                 ### Similar to what is done in DDPG to get initial policy to be close to the mean.
                 values = self_Layers[0].W.get_value() * 0.01
-                ### also zero the dense network from the task part
-                """
-                if (zero_dense):
-                    l = self.getModel().getActorNetworkTaskPart()
-                    values_2 = np.zeros(l.W.get_value().shape, dtype=self.getSettings()['float_type'])
-                    l.W.set_value(values_2)
-                """
             else:
                 values = self_Layers[0].W.get_value()
-            ### copy over other values
             other_shape = other_Layers[0].W.get_value().shape
             self_shape = self_Layers[0].W.get_value().shape
             ### Needs to be put on the end of the matrix
@@ -303,7 +249,6 @@ class AlgorithmInterface(object):
             ### Update current net params
             other_Layers[0].W.set_value(values)
                 
-        # lasagne.layers.helper.set_all_param_values(self_Layers, all_paramsM)
         self.copyLayerParameters(self_Layers, other_Layers)
             
     def getModel(self):
@@ -316,7 +261,6 @@ class AlgorithmInterface(object):
         """
             The states should be normalized
         """
-        # self.setData(states, actions, rewards, result_states)
         if ( alreadyNormed == False):
             states = norm_state(states, self._state_bounds)
         states = np.array(states, dtype=self._settings['float_type'])
@@ -327,7 +271,6 @@ class AlgorithmInterface(object):
         """
             The states should be normalized
         """
-        # self.setData(states, actions, rewards, result_states)
         if ( alreadyNormed == False):
             states = norm_state(states, self._state_bounds)
             next_states = norm_state(next_states, self._state_bounds)
@@ -338,91 +281,46 @@ class AlgorithmInterface(object):
     
     
     def predict(self, state, deterministic_=True, evaluation_=False, p=None, sim_index=None, bootstrapping=False):
-        # states = np.zeros((self._batch_size, self._state_length), dtype=self._settings['float_type'])
-        # states[0, ...] = state
-        """
-        if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
-            pass
-        else:
-        """
         state = norm_state(state, self._state_bounds)
         state = np.array(state, dtype=self._settings['float_type'])
         self._model.setStates(state)
         if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
             action_ = self._q_action()[0]
         else:
-            action_ = scale_action(self._q_action()[0], self._action_bounds)
+            action_ = scale_action(self._q_action()[0], self._action_bounds) # transform the action value to a range
         return action_
     
     def predict_batch(self, states, deterministic_=True):
         """
             These input and output do not need to be normalized/scalled
         """
-        # state = norm_state(state, self._state_bounds)
         states = np.array(states, dtype=self._settings['float_type'])
         self._model.setStates(states)
         actions_ = self._q_action()
         return actions_
     
     def predict_std(self, state, deterministic_=True):
-        # states = np.zeros((self._batch_size, self._state_length), dtype=self._settings['float_type'])
-        # states[0, ...] = state
-        """
-        if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
-            pass
-        else:
-        """
         state = norm_state(state, self._state_bounds)   
         state = np.array(state, dtype=self._settings['float_type'])
         self._model.setStates(state)
-        # action_ = lasagne.layers.get_output(self._model.getActorNetwork(), state, deterministic=deterministic_).mean()
-        # action_ = scale_action(self._q_action()[0], self._action_bounds)
-        # if deterministic_:
-        # action_std = scale_action(self._q_action_std()[0], self._action_bounds)
         if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
             action_std = self._q_action_std()[0]
-            # action_std = self._q_action_std()[0] * (action_bound_std(self._action_bounds))
         else:
             action_std = self._q_action_std()[0] * (action_bound_std(self._action_bounds))
-        # else:
-        # action_ = scale_action(self._q_action()[0], self._action_bounds)
-        # action_ = q_valsActA[0]
         return action_std
     
     def predictWithDropout(self, state, deterministic_=True):
-        # states = np.zeros((self._batch_size, self._state_length), dtype=self._settings['float_type'])
-        # states[0, ...] = state
-        """
-        if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
-            pass
-        else:
-        """
         state = np.array(state, dtype=self._settings['float_type'])
         state = norm_state(state, self._state_bounds)
         self._model.setStates(state)
-        # action_ = lasagne.layers.get_output(self._model.getActorNetwork(), state, deterministic=deterministic_).mean()
-        # action_ = scale_action(self._q_action()[0], self._action_bounds)
-        # if deterministic_:
         action_ = scale_action(self._q_action_drop()[0], self._action_bounds)
-        # else:
-        # action_ = scale_action(self._q_action()[0], self._action_bounds)
-        # action_ = q_valsActA[0]
         return action_
     
     def q_value(self, state):
         """
             For returning a vector of q values, state should NOT be normalized
         """
-        # states = np.zeros((self._batch_size, self._state_length), dtype=self._settings['float_type'])
-        # states[0, ...] = state
-        """
-        if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
-            pass
-        else:
-        """
-        # print ("Agent state bounds: ", self._state_bounds)
         state = norm_state(state, self._state_bounds)
-        # print ("Agent normalized state: ", state)
         state = np.array(state, dtype=self._settings['float_type'])
         self._model.setStates(state)
         self._modelTarget.setStates(state)
@@ -431,19 +329,11 @@ class AlgorithmInterface(object):
             # return (self._q_val())[0]
         else:
             value = scale_reward(self._q_val(), self.getRewardBounds())[0] * (1.0 / (1.0- self.getSettings()['discount_factor']))
-#         print ("Agent scaled value: ", value)
         return value
-        # return self._q_valTarget()[0]
-        # return self._q_val()[0]
     
     def q_values(self, state):
         """
             For returning a vector of q values, state should already be normalized
-        """
-        """
-        if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
-            pass
-        else:
         """
         state = norm_state(state, self._state_bounds)
         state = np.array(state, dtype=self._settings['float_type'])
@@ -451,15 +341,10 @@ class AlgorithmInterface(object):
         self._modelTarget.setStates(state)
         if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
             return scale_reward(self._q_val(), self.getRewardBounds()) * (1.0 / (1.0- self.getSettings()['discount_factor']))
-            # return (self._q_val())[0] 
         else:
             return scale_reward(self._q_val(), self.getRewardBounds()) * (1.0 / (1.0- self.getSettings()['discount_factor']))
-        # return self._q_valTarget()
-        # return self._q_val()
-    
+
     def q_valueWithDropout(self, state):
-        # states = np.zeros((self._batch_size, self._state_length), dtype=self._settings['float_type'])
-        # states[0, ...] = state
         if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
             pass
         else:
@@ -469,14 +354,12 @@ class AlgorithmInterface(object):
         self._model.setStates(state)
         if ( ('disable_parameter_scaling' in self._settings) and (self._settings['disable_parameter_scaling'])):
             return scale_reward(self._q_val_drop(), self.getRewardBounds())[0] * (1.0 / (1.0- self.getSettings()['discount_factor']))
-            # return (self._q_val_drop())[0]
         else:
             return scale_reward(self._q_val_drop(), self.getRewardBounds())[0] * (1.0 / (1.0- self.getSettings()['discount_factor']))
     
     def bellman_error(self, states, actions, rewards, result_states, falls):
         self.setData(states, actions, rewards, result_states, falls)
         return self._bellman_error2()
-        # return self._bellman_errorTarget()
 
     
     def train(self, states, actions, rewards, result_states):
