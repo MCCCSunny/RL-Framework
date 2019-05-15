@@ -327,10 +327,7 @@ def simEpoch(actor, exp, model, discount_factor, anchors=None, action_space_cont
                         action = action__
                     else : # add noise to current policy
                         # return ra1
-                        if ( ((settings['exploration_method'] == 'gaussian_random') 
-                              # or (bootstrapping)
-                              ) 
-                             and (not sampling)):
+                        if ( ((settings['exploration_method'] == 'gaussian_random') ) and (not sampling)):
                             pa = model.predict(state_, p=p, sim_index=worker_id, bootstrapping=bootstrapping)
                             if ( 'anneal_policy_std' in settings and (settings['anneal_policy_std'])):
                                 action = randomExporation(settings["exploration_rate"] * p, pa, action_bounds)

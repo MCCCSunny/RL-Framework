@@ -339,10 +339,10 @@ def trainModelParallel(inputData):
         
         eval_sim_workers = sim_workers
         eval_sim_work_queues = sim_work_queues
-        if ( 'override_sim_env_id' in settings and (settings['override_sim_env_id'] != False)):
+        if ( 'override_sim_env_id' in settings and (settings['override_sim_env_id'] != False)): #True
             (eval_sim_workers, eval_sim_work_queues) = createSimWorkers(settings, input_anchor_queue_eval, output_experience_queue, 
                                                         eval_episode_data_queue, model, forwardDynamicsModel, exp_val, state_bounds, action_bounds, 
-                                                        reward_bounds, default_sim_id=settings['override_sim_env_id'])
+                                                        reward_bounds, default_sim_id=settings['override_sim_env_id']) # id=1
         else:
             input_anchor_queue_eval = input_anchor_queue
         
@@ -447,7 +447,7 @@ def trainModelParallel(inputData):
             file_name=directory+getAgentName()+"_expBufferInit.hdf5"
             experience.saveToFile(file_name)
 
-        if ( settings['load_saved_model'] or (settings['load_saved_model'] == 'network_and_scales') ): ## Transfer learning
+        if (settings['load_saved_model'] or (settings['load_saved_model'] == 'network_and_scales')): ## Transfer learning
             experience.setStateBounds(copy.deepcopy(model.getStateBounds()))
             experience.setRewardBounds(copy.deepcopy(model.getRewardBounds()))
             experience.setActionBounds(copy.deepcopy(model.getActionBounds()))
@@ -539,7 +539,7 @@ def trainModelParallel(inputData):
         trainData["std_actor_regularization_cost"]=[]
         trainData["anneal_p"]=[]
         
-        if (False ):
+        if (False):
             print("State Bounds:", masterAgent.getStateBounds())
             print("Action Bounds:", masterAgent.getActionBounds())
             
@@ -549,8 +549,8 @@ def trainModelParallel(inputData):
         print ("Starting first round")
         if (settings['on_policy']):
             sim_epochs_ = epochs
-        for round_ in range(0,rounds): #annel value
-            if ( 'annealing_schedule' in settings and (settings['annealing_schedule'] != False)):
+        for round_ in range(0,rounds): #annel value # the parameter of greedy exploration
+            if ('annealing_schedule' in settings and (settings['annealing_schedule'] != False)):
                 p = anneal_value(float(round_/rounds), settings_=settings)
             else:
                 p = ((settings['initial_temperature']/math.log(round_+2))) 
@@ -606,7 +606,7 @@ def trainModelParallel(inputData):
                     episodeData['type'] = 'sim'
                     input_anchor_queue.put(episodeData)
                 
-                if masterAgent.getExperience().samples() >= batch_size:
+                if masterAgent.getExperience().samples() >= batch_size: #更新policy网络
                     states, actions, result_states, rewards, falls, G_ts, exp_actions = masterAgent.getExperience().get_batch(batch_size)
                     error = masterAgent.bellman_error(states, actions, rewards, result_states, falls)                    
                     bellman_errors.append(error)
@@ -634,7 +634,7 @@ def trainModelParallel(inputData):
                         
                     if (settings['train_forward_dynamics']): #False
                         dynamicsLoss = masterAgent.getForwardDynamics().bellman_error(states, actions, result_states, rewards)
-                        dynamicsLoss = np.mean(np.fabs(dynamicsLoss))
+                        dynamicsLoss = np.mean(np.fabs(dynamicsLoss)) #fabs：计算绝对值
                         dynamicsLosses.append(dynamicsLoss)
                         if (settings['train_reward_predictor']):
                             dynamicsRewardLoss = masterAgent.getForwardDynamics().reward_error(states, actions, result_states, rewards)
@@ -671,7 +671,7 @@ def trainModelParallel(inputData):
                 # this->_actor->iterate();
             ## This will let me know which part of learning is going slower training updates or simulation
             if (settings["print_levels"][settings["print_level"]] >= settings["print_levels"]['train']):
-                print ("sim queue size: ", input_anchor_queue.qsize() )
+                print ("sim queue size: ", input_anchor_queue.qsize()) #返回队列的大小
             if ( output_experience_queue != None):
                 print ("exp tuple queue size: ", output_experience_queue.qsize())
             
@@ -742,80 +742,7 @@ def trainModelParallel(inputData):
                         trainData["std_forward_dynamics_loss"].append(std_dynamicsLosses)
                     if (settings['train_reward_predictor']):
                         trainData["mean_forward_dynamics_reward_loss"].append(mean_dynamicsRewardLosses)
-                        trainData["std_forward_dynamics_reward_loss"].append(std_dynamicsRewardLosses)
-                    if settings['visualize_learning']:
-                        rlv.updateBellmanError(np.array(trainData["mean_bellman_error"]), np.array(trainData["std_bellman_error"]))
-                        rlv.updateReward(np.array(trainData["mean_eval"]), np.array(trainData["std_eval"]))
-                        rlv.updateDiscountError(np.fabs(trainData["mean_discount_error"]), np.array(trainData["std_discount_error"]))
-                        rlv.redraw()
-                        rlv.setInteractiveOff()
-                        rlv.saveVisual(directory+getAgentName())
-                        rlv.setInteractive()
-                    if (settings['train_forward_dynamics'] and settings['visualize_learning']):
-                        nlv.updateLoss(np.array(trainData["mean_forward_dynamics_loss"]), np.array(trainData["std_forward_dynamics_loss"]))
-                        nlv.redraw()
-                        nlv.setInteractiveOff()
-                        nlv.saveVisual(directory+"trainingGraphNN")
-                        nlv.setInteractive()
-                    if (settings['train_reward_predictor'] and settings['visualize_learning']):
-                        rewardlv.updateLoss(np.array(trainData["mean_forward_dynamics_reward_loss"]), np.array(trainData["std_forward_dynamics_reward_loss"]))
-                        rewardlv.redraw()
-                        rewardlv.setInteractiveOff()
-                        rewardlv.saveVisual(directory+"rewardTrainingGraph")
-                        rewardlv.setInteractive()
-                    if (settings['debug_critic']):                       
-                        mean_criticLosses = np.mean(criticLosses)
-                        std_criticLosses = np.std(criticLosses)
-                        trainData["mean_critic_loss"].append(mean_criticLosses)
-                        trainData["std_critic_loss"].append(std_criticLosses)
-                        criticLosses = []
-                        if (settings['visualize_learning']):
-                            critic_loss_viz.updateLoss(np.array(trainData["mean_critic_loss"]), np.array(trainData["std_critic_loss"]))
-                            critic_loss_viz.redraw()
-                            critic_loss_viz.setInteractiveOff()
-                            critic_loss_viz.saveVisual(directory+"criticLossGraph")
-                            critic_loss_viz.setInteractive()
-                        
-                        mean_criticRegularizationCosts = np.mean(criticRegularizationCosts)
-                        std_criticRegularizationCosts = np.std(criticRegularizationCosts)
-                        trainData["mean_critic_regularization_cost"].append(mean_criticRegularizationCosts)
-                        trainData["std_critic_regularization_cost"].append(std_criticRegularizationCosts)
-                        criticRegularizationCosts = []
-                        if (settings['visualize_learning']):
-                            critic_regularization_viz.updateLoss(np.array(trainData["mean_critic_regularization_cost"]), np.array(trainData["std_critic_regularization_cost"]))
-                            critic_regularization_viz.redraw()
-                            critic_regularization_viz.setInteractiveOff()
-                            critic_regularization_viz.saveVisual(directory+"criticRegularizationGraph")
-                            critic_regularization_viz.setInteractive()
-                        
-                    if (settings['debug_actor']):
-                        
-                        mean_actorLosses = np.mean(actorLosses)
-                        std_actorLosses = np.std(actorLosses)
-                        trainData["mean_actor_loss"].append(mean_actorLosses)
-                        trainData["std_actor_loss"].append(std_actorLosses)
-                        actorLosses = []
-                        if (settings['visualize_learning']):
-                            actor_loss_viz.updateLoss(np.array(trainData["mean_actor_loss"]), np.array(trainData["std_actor_loss"]))
-                            actor_loss_viz.redraw()
-                            actor_loss_viz.setInteractiveOff()
-                            actor_loss_viz.saveVisual(directory+"actorLossGraph")
-                            actor_loss_viz.setInteractive()
-                        
-                        mean_actorRegularizationCosts = np.mean(actorRegularizationCosts)
-                        std_actorRegularizationCosts = np.std(actorRegularizationCosts)
-                        trainData["mean_actor_regularization_cost"].append(mean_actorRegularizationCosts)
-                        trainData["std_actor_regularization_cost"].append(std_actorRegularizationCosts)
-                        actorRegularizationCosts = []
-                        if (settings['visualize_learning']):
-                            actor_regularization_viz.updateLoss(np.array(trainData["mean_actor_regularization_cost"]), np.array(trainData["std_actor_regularization_cost"]))
-                            actor_regularization_viz.redraw()
-                            actor_regularization_viz.setInteractiveOff()
-                            actor_regularization_viz.saveVisual(directory+"actorRegularizationGraph")
-                            actor_regularization_viz.setInteractive()    
-                ## Visulaize some stuff if you want to
-                exp_val.updateViz(actor, masterAgent, directory)
-                
+                        trainData["std_forward_dynamics_reward_loss"].append(std_dynamicsRewardLosses)              
                 
             if (round_ % settings['saving_update_freq_num_rounds']) == 0:            
                 if (settings['train_forward_dynamics']):
@@ -828,7 +755,7 @@ def trainModelParallel(inputData):
                         print ("Saving BEST current forward dynamics agent: " + str(best_dynamicsLosses))
                         file_name_dynamics=directory+"forward_dynamics_"+"_Best.pkl"
                         f = open(file_name_dynamics, 'wb')
-                        dill.dump(masterAgent.getForwardDynamics(), f)
+                        dill.dump(masterAgent.getForwardDynamics(), f) #save model
                         f.close()
                         
                 if (mean_eval > best_eval):
@@ -846,7 +773,6 @@ def trainModelParallel(inputData):
                         trainData[key] = [float(i) for i in trainData[key]]
                     json.dump(trainData, fp)
                     fp.close()
-                    # draw data
                         
                 print ("Saving current masterAgent")
                 
@@ -871,30 +797,6 @@ def trainModelParallel(inputData):
             if ('override_sim_env_id' in settings and (settings['override_sim_env_id'] != False)):
                 for sw in eval_sim_workers: # Should update these more often
                     sw.join() 
-        else:
-            for sw in sim_workers: 
-                input_anchor_queue.put(None)
-            if ('override_sim_env_id' in settings and (settings['override_sim_env_id'] != False)):
-                for sw in eval_sim_workers: 
-                    input_anchor_queue_eval.put(None)
-            print ("Joining Workers")
-            for sw in sim_workers: # Should update these more often
-                sw.join()
-            if ('override_sim_env_id' in settings and (settings['override_sim_env_id'] != False)):
-                for sw in eval_sim_workers: # Should update these more often
-                    sw.join() 
-       
-        if (not settings['on_policy']):    
-            print ("Terminating learners"        )
-            if ( output_experience_queue != None):
-                for lw in learning_workers: # Should update these more often
-                    output_experience_queue.put(None)
-                    output_experience_queue.put(None)
-                output_experience_queue.close()
-            print ("Joining learners"        )  
-            for i in range(len(learning_workers)): # Should update these more often
-                print ("Joining learning worker ", i , " of ", len(learning_workers))
-                learning_workers[i].join()
         
         for i in range(len(sim_work_queues)):
             print ("sim_work_queues size: ", sim_work_queues[i].qsize())
@@ -938,30 +840,10 @@ def trainModelParallel(inputData):
             f = open(file_name_dynamics, 'wb')
             dill.dump(masterAgent.getForwardDynamics(), f)
             f.close()
-
-        
+       
         print("Delete any plots being used")
-        
-        if settings['visualize_learning']:    
-            rlv.finish()
-        if (settings['train_forward_dynamics']):
-            if settings['visualize_learning']:
-                nlv.finish()
-        if (settings['train_reward_predictor']):
-            if settings['visualize_learning']:
-                rewardlv.finish()
-                 
-        if (settings['debug_critic']):
-            if (settings['visualize_learning']):
-                critic_loss_viz.finish()
-                critic_regularization_viz.finish()
-        if (settings['debug_actor']):
-            if (settings['visualize_learning']):
-                actor_loss_viz.finish()
-                actor_regularization_viz.finish()
-        ### This will find ALL your memory deallocation issues in C++...
-        ### And errors in terinating processes properly...
-        gc.collect()
+
+        gc.collect() #立即释放内存
         
 import inspect
 def print_full_stack(tb=None):
